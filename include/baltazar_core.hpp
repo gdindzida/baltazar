@@ -1,4 +1,3 @@
-
 #ifndef BALTAZAR_HPP
 #define BALTAZAR_HPP
 
