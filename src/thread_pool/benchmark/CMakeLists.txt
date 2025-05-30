@@ -1,0 +1,3 @@
+add_executable(baltazar_thread_pool_benchmark benchmark.cpp)
+target_link_libraries(baltazar_thread_pool_benchmark PUBLIC benchmark::benchmark PRIVATE thread_pool_lib)
+
