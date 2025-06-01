@@ -6,7 +6,7 @@ TEST(BaltazarTest, CreateThreadsWithNoTasksAndWaitForAll) {
   constexpr size_t numThreads = 2;
 
   // Act
-  thread_pool::ThreadPool<numThreads, 10> threadPool{};
+  threadPool::ThreadPool<numThreads, 10> threadPool{};
   threadPool.waitForAllTasks();
 
   // Assert
@@ -15,10 +15,9 @@ TEST(BaltazarTest, CreateThreadsWithNoTasksAndWaitForAll) {
 TEST(BaltazarTest, CreateThreadsWithOneTaskAndWaitForAll) {
   // Arrange
   constexpr size_t numThreads = 2;
-  thread_pool::ThreadPool<numThreads, 10> threadPool{};
-  thread_pool::Task task{
-      [](void *) { std::this_thread::sleep_for(std::chrono::milliseconds(2)); },
-      nullptr};
+  threadPool::ThreadPool<numThreads, 10> threadPool{};
+  threadPool::Task task{
+      [] { std::this_thread::sleep_for(std::chrono::milliseconds(2)); }};
 
   // Act
   threadPool.scheduleTask(task);
@@ -32,10 +31,13 @@ TEST(BaltazarTest, CreateThreadsWithManyTasksAndWaitForAll) {
   constexpr size_t numThreads = 2;
   constexpr size_t numOfTries = 10;
   constexpr size_t numOfTasks = 300;
-  thread_pool::ThreadPool<numThreads, 10> threadPool{};
-  thread_pool::Task task{
-      [](void *) { std::this_thread::sleep_for(std::chrono::milliseconds(2)); },
-      nullptr};
+  std::atomic<size_t> testCounter{0};
+
+  threadPool::ThreadPool<numThreads, 10> threadPool{};
+  threadPool::Task task{[&testCounter] {
+    ++testCounter;
+    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+  }};
 
   // Act
   int counter = 0;
@@ -52,4 +54,5 @@ TEST(BaltazarTest, CreateThreadsWithManyTasksAndWaitForAll) {
 
   // Assert
   EXPECT_EQ(counter, numOfTasks);
+  EXPECT_EQ(numOfTasks, counter);
 }

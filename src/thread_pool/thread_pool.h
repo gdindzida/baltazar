@@ -8,7 +8,8 @@
 #include <functional>
 #include <mutex>
 #include <thread>
-namespace thread_pool {
+
+namespace threadPool {
 template <size_t THREAD_NUM, size_t MAX_QUEUE_SIZE> class ThreadPool {
 private:
   std::array<std::jthread, THREAD_NUM> m_threads;
@@ -22,7 +23,7 @@ public:
   explicit ThreadPool() : m_stop(false) {
     for (int i = 0; i < THREAD_NUM; i++) {
       m_threads[i] = std::jthread([this] {
-        thread_pool::Task task{nullptr, nullptr};
+        Task task{[] {}};
         while (true) {
           std::unique_lock lock(m_mtx);
           m_addTaskCv.wait(lock, [this] { return !m_tasks.empty() || m_stop; });
@@ -48,7 +49,7 @@ public:
     }
   }
 
-  bool scheduleTask(thread_pool::Task &task) {
+  bool scheduleTask(Task &task) {
     std::unique_lock lock(m_mtx);
 
     if (!m_tasks.push(task)) {
@@ -66,6 +67,6 @@ public:
     m_finishTaskCv.wait(lock, [this] { return m_tasks.empty() || m_stop; });
   }
 };
-} // namespace thread_pool
+} // namespace threadPool
 
 #endif // THREAD_POOL_H

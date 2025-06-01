@@ -1,19 +1,17 @@
 #ifndef THREAD_TASK_H
 #define THREAD_TASK_H
+#include <functional>
 
-namespace thread_pool {
-
-using TaskFn = void (*)(void *);
+namespace threadPool {
 
 struct Task {
-  TaskFn func = nullptr;
-  void *data = nullptr;
+  std::function<void()> _func;
 
-  void run() {
-    if (func)
-      func(data);
+  void run() const {
+    if (_func)
+      _func();
   }
 };
-} // namespace thread_pool
+} // namespace threadPool
 
 #endif // THREAD_TASK_H
