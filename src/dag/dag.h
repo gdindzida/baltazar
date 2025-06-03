@@ -2,7 +2,6 @@
 #define DAG_H
 
 #include "../thread_pool/thread_task.h"
-#include "../utils/circular_queue.h"
 
 #include <cassert>
 #include <string>

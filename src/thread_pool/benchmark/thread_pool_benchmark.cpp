@@ -11,6 +11,11 @@ constexpr size_t baseMilliseconds = 10;
 constexpr size_t jitterMilliseconds = 5;
 constexpr size_t numberOfThreads = 8;
 
+struct BenchmarkData {
+  int _baseMilliseconds;
+  int _jitterMilliseconds;
+};
+
 int waitRandom(const int baseMs, const int jitterMs) {
   std::random_device rd;
   std::mt19937 gen(rd());
@@ -23,10 +28,16 @@ int waitRandom(const int baseMs, const int jitterMs) {
   return 0;
 }
 
+void helperTaskFunction(void *context) {
+  const auto *const benchmarkData = static_cast<BenchmarkData *>(context);
+  waitRandom(benchmarkData->_baseMilliseconds,
+             benchmarkData->_jitterMilliseconds);
+}
+
 // NOLINTNEXTLINE
 static void BM_RunSerial(benchmark::State &state) {
 
-  auto myFunc = []() {
+  auto myFunc = [] {
     for (int i = 0; i < numberOfTasks; i++) {
       waitRandom(baseMilliseconds, jitterMilliseconds);
     }
@@ -47,9 +58,12 @@ static void BM_RunParallel(benchmark::State &state) {
   threadPool::ThreadPool<numberOfThreads, 30> tpool{};
 
   auto myFunc = [&tpool] {
+    BenchmarkData data{baseMilliseconds, jitterMilliseconds};
     for (int i = 0; i < numberOfTasks; i++) {
       threadPool::Task task{};
-      task._func = [] { waitRandom(baseMilliseconds, jitterMilliseconds); };
+      task._func = helperTaskFunction;
+      task._context = static_cast<void *>(&data);
+
       while (!tpool.scheduleTask(task)) {
       }
     }

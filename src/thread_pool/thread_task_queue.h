@@ -26,7 +26,7 @@ public:
   }
 
   Task pop() {
-    Task out = {[] {}};
+    Task out = {nullTaskFunction};
     if (m_size <= 0) {
       return out;
     }

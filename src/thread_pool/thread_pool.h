@@ -10,6 +10,7 @@
 #include <thread>
 
 namespace threadPool {
+
 template <size_t THREAD_NUM, size_t MAX_QUEUE_SIZE> class ThreadPool {
   std::array<std::jthread, THREAD_NUM> m_threads;
   TaskQueue<MAX_QUEUE_SIZE> m_tasks;
@@ -22,7 +23,7 @@ public:
   explicit ThreadPool() : m_stop(false) {
     for (int i = 0; i < THREAD_NUM; i++) {
       m_threads[i] = std::jthread([this] {
-        Task task{[] {}};
+        Task task{nullTaskFunction};
         while (true) {
           std::unique_lock lock(m_mtx);
           m_addTaskCv.wait(lock, [this] { return !m_tasks.empty() || m_stop; });
