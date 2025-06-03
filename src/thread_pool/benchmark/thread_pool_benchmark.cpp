@@ -46,7 +46,7 @@ static void BM_RunParallel(benchmark::State &state) {
 
   threadPool::ThreadPool<numberOfThreads, 30> tpool{};
 
-  auto myFunc = [&tpool]() {
+  auto myFunc = [&tpool] {
     for (int i = 0; i < numberOfTasks; i++) {
       threadPool::Task task{};
       task._func = [] { waitRandom(baseMilliseconds, jitterMilliseconds); };

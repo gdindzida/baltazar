@@ -11,7 +11,6 @@
 
 namespace threadPool {
 template <size_t THREAD_NUM, size_t MAX_QUEUE_SIZE> class ThreadPool {
-private:
   std::array<std::jthread, THREAD_NUM> m_threads;
   TaskQueue<MAX_QUEUE_SIZE> m_tasks;
   std::mutex m_mtx;

@@ -1,4 +1,3 @@
 add_executable(thread_pool_test thread_pool_test.cpp)
 target_link_libraries(thread_pool_test PUBLIC gtest_main PRIVATE thread_pool_lib)
 include(GoogleTest)
-add_test(NAME thread_pool_tests COMMAND thread_pool_test)

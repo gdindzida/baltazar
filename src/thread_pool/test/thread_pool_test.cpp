@@ -1,7 +1,7 @@
 #include "../thread_pool.h"
 #include <gtest/gtest.h>
 
-TEST(BaltazarTest, CreateThreadsWithNoTasksAndWaitForAll) {
+TEST(ThreadPoolTest, CreateThreadsWithNoTasksAndWaitForAll) {
   // Arrange
   constexpr size_t numThreads = 2;
 
@@ -12,7 +12,7 @@ TEST(BaltazarTest, CreateThreadsWithNoTasksAndWaitForAll) {
   // Assert
 }
 
-TEST(BaltazarTest, CreateThreadsWithOneTaskAndWaitForAll) {
+TEST(ThreadPoolTest, CreateThreadsWithOneTaskAndWaitForAll) {
   // Arrange
   constexpr size_t numThreads = 2;
   threadPool::ThreadPool<numThreads, 10> threadPool{};
@@ -26,7 +26,7 @@ TEST(BaltazarTest, CreateThreadsWithOneTaskAndWaitForAll) {
   // Assert
 }
 
-TEST(BaltazarTest, CreateThreadsWithManyTasksAndWaitForAll) {
+TEST(ThreadPoolTest, CreateThreadsWithManyTasksAndWaitForAll) {
   // Arrange
   constexpr size_t numThreads = 2;
   constexpr size_t numOfTries = 10;
