@@ -1,13 +1,26 @@
 #include "../thread_pool.h"
 #include <gtest/gtest.h>
 
-void helperTaskFunction(void *context) {
-  if (context != nullptr) {
-    auto *testCounter = static_cast<std::atomic<size_t> *>(context);
-    ++*testCounter;
+class TestThreadTask final : public threadPool::IThreadTask {
+public:
+  explicit TestThreadTask(void *ctx) : m_context(ctx) {};
+
+  // NOLINTNEXTLINE
+  ~TestThreadTask() override {};
+
+  void run() const override { helperTaskFunction(m_context); }
+
+private:
+  static void helperTaskFunction(void *context) {
+    if (context != nullptr) {
+      auto *testCounter = static_cast<std::atomic<size_t> *>(context);
+      ++*testCounter;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(2));
   }
-  std::this_thread::sleep_for(std::chrono::milliseconds(2));
-}
+
+  void *m_context;
+};
 
 TEST(ThreadPoolTest, CreateThreadsWithNoTasksAndWaitForAll) {
   // Arrange
@@ -24,11 +37,10 @@ TEST(ThreadPoolTest, CreateThreadsWithOneTaskAndWaitForAll) {
   // Arrange
   constexpr size_t numThreads = 2;
   threadPool::ThreadPool<numThreads, 10> threadPool{};
-  threadPool::Task task{helperTaskFunction};
-  task._context = nullptr;
+  TestThreadTask task{nullptr};
 
   // Act
-  threadPool.scheduleTask(task);
+  threadPool.scheduleTask(&task);
   threadPool.waitForAllTasks();
 
   // Assert
@@ -42,14 +54,13 @@ TEST(ThreadPoolTest, CreateThreadsWithManyTasksAndWaitForAll) {
   std::atomic<size_t> testCounter{0};
 
   threadPool::ThreadPool<numThreads, 10> threadPool{};
-  threadPool::Task task{helperTaskFunction};
-  task._context = static_cast<void *>(&testCounter);
+  TestThreadTask task{&testCounter};
 
   // Act
   int counter = 0;
   for (int i = 0; i < numOfTasks; i++) {
     for (int j = 0; j < numOfTries; j++) {
-      if (threadPool.scheduleTask(task)) {
+      if (threadPool.scheduleTask(&task)) {
         counter++;
         break;
       }

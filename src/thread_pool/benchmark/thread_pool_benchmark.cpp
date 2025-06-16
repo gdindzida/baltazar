@@ -28,11 +28,27 @@ int waitRandom(const int baseMs, const int jitterMs) {
   return 0;
 }
 
-void helperTaskFunction(void *context) {
-  const auto *const benchmarkData = static_cast<BenchmarkData *>(context);
-  waitRandom(benchmarkData->_baseMilliseconds,
-             benchmarkData->_jitterMilliseconds);
-}
+class TestThreadTask final : public threadPool::IThreadTask {
+public:
+  explicit TestThreadTask(void *ctx) : m_context(ctx) {};
+
+  // NOLINTNEXTLINE
+  ~TestThreadTask() override {};
+
+  void run() const override { helperTaskFunction(m_context); }
+
+private:
+  static void helperTaskFunction(void *context) {
+    if (context == nullptr) {
+      return;
+    }
+    const auto *const benchmarkData = static_cast<BenchmarkData *>(context);
+    waitRandom(benchmarkData->_baseMilliseconds,
+               benchmarkData->_jitterMilliseconds);
+  }
+
+  void *m_context;
+};
 
 // NOLINTNEXTLINE
 static void BM_RunSerial(benchmark::State &state) {
@@ -59,12 +75,10 @@ static void BM_RunParallel(benchmark::State &state) {
 
   auto myFunc = [&tpool] {
     BenchmarkData data{baseMilliseconds, jitterMilliseconds};
-    for (int i = 0; i < numberOfTasks; i++) {
-      threadPool::Task task{};
-      task._func = helperTaskFunction;
-      task._context = static_cast<void *>(&data);
+    TestThreadTask task{&data};
 
-      while (!tpool.scheduleTask(task)) {
+    for (int i = 0; i < numberOfTasks; i++) {
+      while (!tpool.scheduleTask(&task)) {
       }
     }
 

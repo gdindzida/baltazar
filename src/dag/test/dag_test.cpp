@@ -1,22 +1,57 @@
 #include "../dag.h"
 #include <gtest/gtest.h>
 
+class TestNodeFunctorA final : public dag::INodeFunctor<int> {
+public:
+  int run() override { return 1111; };
+};
+
+class TestNodeFunctorB final : public dag::INodeFunctor<double, int> {
+public:
+  double run(int i) override { return 123.5; };
+};
+
+class TestNodeFunctorC final : public dag::INodeFunctor<float, double, int> {
+public:
+  float run(const double d, const int i) override {
+    return static_cast<float>(d) + static_cast<float>(i);
+  }
+};
+
+class TestNodeFunctorE final : public dag::INodeFunctor<int, double> {
+public:
+  int run(double d) override { return 777; }
+};
+
+class TestNodeFunctorF final : public dag::INodeFunctor<double, double> {
+public:
+  double run(double d) override { return 771; }
+};
+
+class TestNodeFunctorG final : public dag::INodeFunctor<double, int> {
+public:
+  double run(int i) override { return 770; }
+};
+
 TEST(DagTest, CreateGraphAndGetSortedTasks) {
   // Arrange
-  auto work = [] {};
-
-  std::array<std::string, 5> names{"nodeA", "nodeB", "nodeC", "nodeD", "nodeE"};
+  const std::array<std::string, 5> names{"TestNodeA", "TestNodeB", "TestNodeC",
+                                         "TestNodeD", "TestNodeE"};
+  TestNodeFunctorA functorA{};
+  TestNodeFunctorB functorB{};
+  TestNodeFunctorC functorC{};
+  TestNodeFunctorE functorE{};
 
   // Act
-  dag::Node<0> nodeA{{threadPool::nullTaskFunction, "nodeA"}};
-  dag::Node<1> nodeB{{threadPool::nullTaskFunction, "nodeB"}};
-  nodeB.addDependency(&nodeA);
-  dag::Node<2> nodeC{{threadPool::nullTaskFunction, "nodeC"}};
-  nodeC.addDependency(&nodeA);
-  nodeC.addDependency(&nodeB);
-  dag::Node<0> nodeD{{threadPool::nullTaskFunction, "nodeD"}};
-  dag::Node<1> nodeE{{threadPool::nullTaskFunction, "nodeE"}};
-  nodeE.addDependency(&nodeD);
+  dag::Node nodeA{&functorA, "TestNodeA"};
+  dag::Node nodeB{&functorB, "TestNodeB"};
+  nodeB.addDependency<0, int>(&nodeA);
+  dag::Node nodeC{&functorC, "TestNodeC"};
+  nodeC.addDependency<1, int>(&nodeA);
+  nodeC.addDependency<0, double>(&nodeB);
+  dag::Node nodeD{&functorB, "TestNodeD"};
+  dag::Node nodeE{&functorE, "TestNodeE"};
+  nodeE.addDependency<0, double>(&nodeD);
 
   dag::Dag<5> graph{};
 
@@ -26,28 +61,31 @@ TEST(DagTest, CreateGraphAndGetSortedTasks) {
   graph.addNode(&nodeD);
   graph.addNode(&nodeE);
 
-  auto tasks = graph.getSortedTasks();
+  const auto nodes = graph.getSortedTasks();
 
   // Assert
   for (int i = 0; i < 5; ++i) {
-    const threadPool::Task &task = tasks[i];
-    EXPECT_EQ(names[i], task._name);
+    auto node = nodes[i];
+    EXPECT_EQ(names[i], node->name());
   }
 }
 
 TEST(DagTest, DeepDependencyChain) {
   // Arrange
-  auto work = [] {};
+  TestNodeFunctorA functorA{};
+  TestNodeFunctorB functorB{};
+  TestNodeFunctorC functorC{};
+  TestNodeFunctorE functorE{};
 
-  dag::Node<0> nodeA{{threadPool::nullTaskFunction, "A"}};
-  dag::Node<1> nodeB{{threadPool::nullTaskFunction, "B"}};
-  nodeB.addDependency(&nodeA);
-  dag::Node<1> nodeC{{threadPool::nullTaskFunction, "C"}};
-  nodeC.addDependency(&nodeB);
-  dag::Node<1> nodeD{{threadPool::nullTaskFunction, "D"}};
-  nodeD.addDependency(&nodeC);
-  dag::Node<1> nodeE{{threadPool::nullTaskFunction, "E"}};
-  nodeE.addDependency(&nodeD);
+  dag::Node nodeA{&functorA, "TestNodeA"};
+  dag::Node nodeB{&functorB, "TestNodeB"};
+  nodeB.addDependency<0, int>(&nodeA);
+  dag::Node nodeC{&functorC, "TestNodeC"};
+  nodeC.addDependency<1, int>(&nodeA);
+  nodeC.addDependency<0, double>(&nodeB);
+  dag::Node nodeD{&functorB, "TestNodeD"};
+  dag::Node nodeE{&functorE, "TestNodeE"};
+  nodeE.addDependency<0, double>(&nodeD);
 
   dag::Dag<5> graph{};
   graph.addNode(&nodeA);
@@ -57,34 +95,35 @@ TEST(DagTest, DeepDependencyChain) {
   graph.addNode(&nodeE);
 
   // Act
-  auto tasks = graph.getSortedTasks();
+  const auto nodes = graph.getSortedTasks();
 
   // Assert
   std::unordered_map<std::string, int> pos;
   for (int i = 0; i < 5; ++i)
-    pos[tasks[i]._name] = i;
+    pos[nodes[i]->name()] = i;
 
-  EXPECT_LT(pos["A"], pos["B"]);
-  EXPECT_LT(pos["B"], pos["C"]);
-  EXPECT_LT(pos["C"], pos["D"]);
-  EXPECT_LT(pos["D"], pos["E"]);
+  EXPECT_LT(pos["TestNodeA"], pos["TestNodeB"]);
+  EXPECT_LT(pos["TestNodeB"], pos["TestNodeC"]);
+  EXPECT_LT(pos["TestNodeC"], pos["TestNodeD"]);
+  EXPECT_LT(pos["TestNodeD"], pos["TestNodeE"]);
 }
 
 TEST(DagTest, WideDAGBranchingAndMerging) {
   // Arrange
-  auto work = [] {};
+  TestNodeFunctorA functorA{};
+  TestNodeFunctorB functorB{};
+  TestNodeFunctorC functorC{};
+  TestNodeFunctorE functorE{};
 
-  dag::Node<0> nodeA{{threadPool::nullTaskFunction, "A"}};
-  dag::Node<1> nodeB{{threadPool::nullTaskFunction, "B"}};
-  nodeB.addDependency(&nodeA);
-  dag::Node<1> nodeC{{threadPool::nullTaskFunction, "C"}};
-  nodeC.addDependency(&nodeA);
-  dag::Node<1> nodeD{{threadPool::nullTaskFunction, "D"}};
-  nodeD.addDependency(&nodeA);
-  dag::Node<3> nodeE{{threadPool::nullTaskFunction, "E"}};
-  nodeE.addDependency(&nodeB);
-  nodeE.addDependency(&nodeC);
-  nodeE.addDependency(&nodeD);
+  dag::Node nodeA{&functorA, "TestNodeA"};
+  dag::Node nodeB{&functorB, "TestNodeB"};
+  nodeB.addDependency<0, int>(&nodeA);
+  dag::Node nodeC{&functorC, "TestNodeC"};
+  nodeC.addDependency<1, int>(&nodeA);
+  nodeC.addDependency<0, double>(&nodeB);
+  dag::Node nodeD{&functorB, "TestNodeD"};
+  dag::Node nodeE{&functorE, "TestNodeE"};
+  nodeE.addDependency<0, double>(&nodeD);
 
   dag::Dag<5> graph{};
   graph.addNode(&nodeA);
@@ -94,34 +133,37 @@ TEST(DagTest, WideDAGBranchingAndMerging) {
   graph.addNode(&nodeE);
 
   // Act
-  auto tasks = graph.getSortedTasks();
+  const auto nodes = graph.getSortedTasks();
 
   // Assert
   std::unordered_map<std::string, int> pos;
   for (int i = 0; i < 5; ++i)
-    pos[tasks[i]._name] = i;
+    pos[nodes[i]->name()] = i;
 
-  EXPECT_LT(pos["A"], pos["B"]);
-  EXPECT_LT(pos["A"], pos["C"]);
-  EXPECT_LT(pos["A"], pos["D"]);
-  EXPECT_LT(pos["B"], pos["E"]);
-  EXPECT_LT(pos["C"], pos["E"]);
-  EXPECT_LT(pos["D"], pos["E"]);
+  EXPECT_LT(pos["TestNodeA"], pos["TestNodeB"]);
+  EXPECT_LT(pos["TestNodeA"], pos["TestNodeC"]);
+  EXPECT_LT(pos["TestNodeA"], pos["TestNodeD"]);
+  EXPECT_LT(pos["TestNodeB"], pos["TestNodeE"]);
+  EXPECT_LT(pos["TestNodeC"], pos["TestNodeE"]);
+  EXPECT_LT(pos["TestNodeD"], pos["TestNodeE"]);
 }
 
 TEST(DagTest, AllNodesDependOnRoot) {
   // Arrange
-  auto work = [] {};
+  TestNodeFunctorA functorA{};
+  TestNodeFunctorB functorB{};
+  TestNodeFunctorC functorC{};
+  TestNodeFunctorE functorE{};
 
-  dag::Node<0> nodeA{{threadPool::nullTaskFunction, "A"}}; // Root
-  dag::Node<1> nodeB{{threadPool::nullTaskFunction, "B"}};
-  nodeB.addDependency(&nodeA);
-  dag::Node<1> nodeC{{threadPool::nullTaskFunction, "C"}};
-  nodeC.addDependency(&nodeA);
-  dag::Node<1> nodeD{{threadPool::nullTaskFunction, "D"}};
-  nodeD.addDependency(&nodeA);
-  dag::Node<1> nodeE{{threadPool::nullTaskFunction, "E"}};
-  nodeE.addDependency(&nodeA);
+  dag::Node nodeA{&functorA, "TestNodeA"};
+  dag::Node nodeB{&functorB, "TestNodeB"};
+  nodeB.addDependency<0, int>(&nodeA);
+  dag::Node nodeC{&functorC, "TestNodeC"};
+  nodeC.addDependency<1, int>(&nodeA);
+  nodeC.addDependency<0, double>(&nodeB);
+  dag::Node nodeD{&functorB, "TestNodeD"};
+  dag::Node nodeE{&functorE, "TestNodeE"};
+  nodeE.addDependency<0, double>(&nodeD);
 
   dag::Dag<5> graph{};
   graph.addNode(&nodeA);
@@ -131,29 +173,30 @@ TEST(DagTest, AllNodesDependOnRoot) {
   graph.addNode(&nodeE);
 
   // Act
-  auto tasks = graph.getSortedTasks();
+  const auto nodes = graph.getSortedTasks();
 
   // Assert
   std::unordered_map<std::string, int> pos;
   for (int i = 0; i < 5; ++i)
-    pos[tasks[i]._name] = i;
+    pos[nodes[i]->name()] = i;
 
-  for (auto name : {"B", "C", "D", "E"}) {
-    EXPECT_LT(pos["A"], pos[name]);
+  for (auto name : {"TestNodeB", "TestNodeC", "TestNodeD", "TestNodeE"}) {
+    EXPECT_LT(pos["TestNodeA"], pos[name]);
   }
 }
 
 TEST(DagTest, DetectsCycle) {
   // Arrange
-  auto work = [] {};
+  TestNodeFunctorE functorE{};
+  TestNodeFunctorF functorF{};
+  TestNodeFunctorG functorG{};
 
-  dag::Node<1> nodeA{{threadPool::nullTaskFunction, "A"}};
-  dag::Node<1> nodeB{{threadPool::nullTaskFunction, "B"}};
-  dag::Node<1> nodeC{{threadPool::nullTaskFunction, "C"}};
-
-  nodeA.addDependency(&nodeC);
-  nodeB.addDependency(&nodeA);
-  nodeC.addDependency(&nodeB); // Cycle A -> B -> C -> A
+  dag::Node nodeA{&functorE, "TestNodeA"};
+  dag::Node nodeB{&functorG, "TestNodeB"};
+  dag::Node nodeC{&functorF, "TestNodeC"};
+  nodeC.addDependency<0, double>(&nodeB);
+  nodeA.addDependency<0, double>(&nodeC);
+  nodeB.addDependency<0, int>(&nodeA);
 
   dag::Dag<3> graph{};
   graph.addNode(&nodeA);
@@ -167,4 +210,28 @@ TEST(DagTest, DetectsCycle) {
         (void)tasks;
       },
       ".*");
+}
+
+TEST(DagTest, RunFunctorOnDependencies) {
+  // Arrange
+  TestNodeFunctorA functorA{};
+  TestNodeFunctorB functorB{};
+  TestNodeFunctorC functorC{};
+
+  dag::Node nodeA{&functorA, "TestNodeA"};
+  dag::Node nodeB{&functorB, "TestNodeB"};
+  nodeB.addDependency<0, int>(&nodeA);
+  dag::Node nodeC{&functorC, "TestNodeC"};
+  nodeC.addDependency<1, int>(&nodeA);
+  nodeC.addDependency<0, double>(&nodeB);
+
+  // Act
+  nodeA.run();
+  nodeB.run();
+  nodeC.run();
+
+  // Assert
+  const float *const outputC = nodeC.getOutput();
+
+  EXPECT_EQ(*outputC, 1234.5);
 }

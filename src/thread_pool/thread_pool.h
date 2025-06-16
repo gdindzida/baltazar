@@ -23,7 +23,7 @@ public:
   explicit ThreadPool() : m_stop(false) {
     for (int i = 0; i < THREAD_NUM; i++) {
       m_threads[i] = std::jthread([this] {
-        Task task{nullTaskFunction};
+        const IThreadTask *task = &nullTreadTask;
         while (true) {
           std::unique_lock lock(m_mtx);
           m_addTaskCv.wait(lock, [this] { return !m_tasks.empty() || m_stop; });
@@ -31,7 +31,7 @@ public:
             return;
           task = m_tasks.pop();
           lock.unlock();
-          task.run();
+          task->run();
           m_finishTaskCv.notify_all();
         }
       });
@@ -49,7 +49,7 @@ public:
     }
   }
 
-  bool scheduleTask(Task &task) {
+  bool scheduleTask(IThreadTask *task) {
     std::unique_lock lock(m_mtx);
 
     if (!m_tasks.push(task)) {

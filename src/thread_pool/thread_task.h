@@ -5,38 +5,26 @@
 
 namespace threadPool {
 
-using taskFunction = void (*)(void *);
+using ThreadTaskFunction = void (*)(void *);
 
-// NOLINTNEXTLINE
-void nullTaskFunction(void *) {
-  // do nothing
-}
-
-struct Task {
-  taskFunction _func;
-  std::string _name;
-  taskFunction _initContext;
-  taskFunction _deleteContext;
-  void *_context;
-
-  void initContext() const {
-    if (_initContext != nullptr) {
-      _initContext(_context);
-    }
-  }
-
-  void deleteContext() const {
-    if (_deleteContext != nullptr) {
-      _deleteContext(_context);
-    }
-  }
-
-  void run() const {
-    if (_func != nullptr) {
-      _func(_context);
-    }
-  }
+class IThreadTask {
+public:
+  virtual ~IThreadTask() = default;
+  virtual void run() const = 0;
 };
+
+class NullThreadTask final : public IThreadTask {
+public:
+  // NOLINTNEXTLINE
+  NullThreadTask() {}
+  // NOLINTNEXTLINE
+  ~NullThreadTask() override {}
+
+  void run() const override {}
+};
+
+const NullThreadTask nullTreadTask{};
+
 } // namespace threadPool
 
 #endif // THREAD_TASK_H

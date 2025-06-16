@@ -8,13 +8,13 @@
 
 namespace threadPool {
 template <size_t MAX_TASKS> class TaskQueue {
-  std::array<Task, MAX_TASKS> m_tasks;
+  std::array<IThreadTask *, MAX_TASKS> m_tasks;
   size_t m_head = 0;
   size_t m_tail = 0;
   size_t m_size = 0;
 
 public:
-  [[nodiscard]] bool push(const Task &task) {
+  [[nodiscard]] bool push(IThreadTask *task) {
     if (m_size >= MAX_TASKS) {
       return false;
     }
@@ -25,8 +25,8 @@ public:
     return true;
   }
 
-  Task pop() {
-    Task out = {nullTaskFunction};
+  const IThreadTask *pop() {
+    const IThreadTask *out = &nullTreadTask;
     if (m_size <= 0) {
       return out;
     }
