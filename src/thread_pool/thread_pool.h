@@ -5,7 +5,6 @@
 
 #include <condition_variable>
 #include <format>
-#include <functional>
 #include <mutex>
 #include <thread>
 
@@ -39,10 +38,7 @@ public:
   }
 
   ~ThreadPool() {
-    std::unique_lock lock(m_mtx);
-    m_stop = true;
-    lock.unlock();
-    m_addTaskCv.notify_all();
+    this->shutdown();
 
     for (auto &th : m_threads) {
       th.join();
@@ -62,9 +58,18 @@ public:
     return true;
   }
 
-  void waitForAllTasks() {
+  void waitForAllTasks(std::atomic<bool> &stopFlag) {
     std::unique_lock lock(m_mtx);
-    m_finishTaskCv.wait(lock, [this] { return m_tasks.empty() || m_stop; });
+    m_finishTaskCv.wait(lock, [this, &stopFlag] {
+      return m_tasks.empty() || m_stop || stopFlag;
+    });
+  }
+
+  void shutdown() {
+    std::unique_lock lock(m_mtx);
+    m_stop = true;
+    lock.unlock();
+    m_addTaskCv.notify_all();
   }
 };
 } // namespace threadPool

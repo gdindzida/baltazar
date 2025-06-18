@@ -9,6 +9,22 @@
 
 namespace dag {
 
+template <typename OUTPUT, typename... DEPS> class INodeFunctor {
+public:
+  virtual ~INodeFunctor() = default;
+
+  virtual OUTPUT run(DEPS... deps) = 0;
+};
+
+template <typename FUNC, size_t... IS>
+constexpr void staticForHelper(FUNC f, std::index_sequence<IS...>) {
+  (f(std::integral_constant<size_t, IS>{}), ...);
+}
+
+template <size_t N, typename FUNC> constexpr void staticFor(FUNC f) {
+  staticForHelper(f, std::make_index_sequence<N>{});
+}
+
 class INode {
 public:
   virtual ~INode() = default;
@@ -30,24 +46,9 @@ public:
   virtual OUTPUT *getOutput() = 0;
 };
 
-template <typename OUTPUT, typename... DEPS> class INodeFunctor {
-public:
-  virtual ~INodeFunctor() = default;
-
-  virtual OUTPUT run(DEPS... deps) = 0;
-};
-
-template <typename FUNC, size_t... IS>
-constexpr void staticForHelper(FUNC f, std::index_sequence<IS...>) {
-  (f(std::integral_constant<size_t, IS>{}), ...);
-}
-
-template <size_t N, typename FUNC> constexpr void staticFor(FUNC f) {
-  staticForHelper(f, std::make_index_sequence<N>{});
-}
-
 template <typename OUTPUT, typename... INPUTS>
-class Node final : public NodeDependency<OUTPUT>, threadPool::IThreadTask {
+class Node final : public NodeDependency<OUTPUT>,
+                   public threadPool::IThreadTask {
 public:
   static constexpr size_t dependencyCapacity = sizeof...(INPUTS);
 

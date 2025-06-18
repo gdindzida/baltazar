@@ -235,3 +235,37 @@ TEST(DagTest, RunFunctorOnDependencies) {
 
   EXPECT_EQ(*outputC, 1234.5);
 }
+
+TEST(DagTest, RunFunctorOnDependenciesPointers) {
+  // Arrange
+  TestNodeFunctorA functorA{};
+  TestNodeFunctorB functorB{};
+  TestNodeFunctorC functorC{};
+
+  dag::Node nodeA{&functorA, "TestNodeA"};
+  dag::Node nodeB{&functorB, "TestNodeB"};
+  nodeB.addDependency<0, int>(&nodeA);
+  dag::Node nodeC{&functorC, "TestNodeC"};
+  nodeC.addDependency<1, int>(&nodeA);
+  nodeC.addDependency<0, double>(&nodeB);
+
+  dag::Dag<3> graph{};
+  graph.addNode(&nodeA);
+  graph.addNode(&nodeB);
+  graph.addNode(&nodeC);
+
+  auto nodes = graph.getSortedTasks();
+
+  // Act
+  for (auto *nodePtr : nodes) {
+    const auto *threadTaskPtr =
+        dynamic_cast<threadPool::IThreadTask *>(nodePtr);
+
+    threadTaskPtr->run();
+  }
+
+  // Assert
+  const float *const outputC = nodeC.getOutput();
+
+  EXPECT_EQ(*outputC, 1234.5);
+}

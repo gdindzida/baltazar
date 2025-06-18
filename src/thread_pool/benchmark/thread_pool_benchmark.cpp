@@ -81,8 +81,8 @@ static void BM_RunParallel(benchmark::State &state) {
       while (!tpool.scheduleTask(&task)) {
       }
     }
-
-    tpool.waitForAllTasks();
+    std::atomic stop{false};
+    tpool.waitForAllTasks(stop);
 
     return 0;
   };

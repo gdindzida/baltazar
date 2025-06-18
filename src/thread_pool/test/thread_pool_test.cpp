@@ -28,7 +28,8 @@ TEST(ThreadPoolTest, CreateThreadsWithNoTasksAndWaitForAll) {
 
   // Act
   threadPool::ThreadPool<numThreads, 10> threadPool{};
-  threadPool.waitForAllTasks();
+  std::atomic stop{false};
+  threadPool.waitForAllTasks(stop);
 
   // Assert
 }
@@ -41,7 +42,8 @@ TEST(ThreadPoolTest, CreateThreadsWithOneTaskAndWaitForAll) {
 
   // Act
   threadPool.scheduleTask(&task);
-  threadPool.waitForAllTasks();
+  std::atomic stop{false};
+  threadPool.waitForAllTasks(stop);
 
   // Assert
 }
@@ -67,8 +69,38 @@ TEST(ThreadPoolTest, CreateThreadsWithManyTasksAndWaitForAll) {
       std::this_thread::sleep_for(std::chrono::milliseconds(2));
     }
   }
-  threadPool.waitForAllTasks();
+  std::atomic stop{false};
+  threadPool.waitForAllTasks(stop);
 
   // Assert
   EXPECT_EQ(counter, numOfTasks);
+}
+
+TEST(ThreadPoolTest, CreateThreadsWithManyTasksAndWaitForAllButStopEarly) {
+  // Arrange
+  constexpr size_t numThreads = 2;
+  constexpr size_t numOfTries = 10;
+  constexpr size_t numOfTasks = 300;
+  std::atomic<size_t> testCounter{0};
+
+  threadPool::ThreadPool<numThreads, 10> threadPool{};
+  TestThreadTask task{&testCounter};
+
+  // Act
+  int counter = 0;
+  for (int i = 0; i < numOfTasks; i++) {
+    for (int j = 0; j < numOfTries; j++) {
+      if (threadPool.scheduleTask(&task)) {
+        counter++;
+        break;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
+  }
+  std::atomic stop{false};
+  threadPool.waitForAllTasks(stop);
+  stop.store(true);
+
+  // Assert
+  EXPECT_LE(counter, numOfTasks);
 }
