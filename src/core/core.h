@@ -4,10 +4,6 @@
 #include <atomic>
 
 namespace core {
-// TODO add retries if cant schedule a task
-// TODO add timeout for a task, like expected time budget
-// TODO finish tests
-// TODO create benchmark
 template <size_t GRAPH_SIZE>
 void runGraphSerialOnce(dag::Dag<GRAPH_SIZE> &graph,
                         std::atomic<bool> &stopFlag);
