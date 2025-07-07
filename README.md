@@ -14,9 +14,20 @@ topological sort of DAG.
 ### Features
 
 - Features
+    - Switch to C++17 (MVP)
+    - Implement abstraction for threads:  (MVP)
+        - replace jthread with thread
+            - investigate std::stop_token
+        - implement rtos threads
     - Add retries if queue is full (MVP)
     - Add timeout for a task. Each task can have expected time budget (MVP)
+    - Implement thread priorities (MVP)
     - Remove all occurrences of dynamic_cast (MVP)
+    - Clang-Tidy: Add checks like cppcoreguidelines-no-malloc, hicpp-no-exceptions, etc.  (MVP)
+        - For embedded complience
+    - GPU support for CUDA and openCL
+        - What is needed to make it easy to use?
+    - ??? (MVP)
 - Support
     - DAG visualization (MVP)
     - investigate creating DAG input as yaml or json or something similar
@@ -37,3 +48,9 @@ topological sort of DAG.
     - ???
 - SoC testing
     - Investigate which board is best for testing (MVP)
+        - Memory constraints
+            - Is it ok for user to provide all the memory thus keeping framework flexible
+            - Is this too complex? How to make it simple to use?
+        - RPI
+        - STM32 (MVP)
+            - which one?
