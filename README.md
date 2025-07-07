@@ -14,7 +14,6 @@ topological sort of DAG.
 ### Features
 
 - Features
-    - Switch to C++17 (MVP)
     - Implement abstraction for threads:  (MVP)
         - implement rtos threads
     - Add retries if queue is full (MVP)
@@ -37,6 +36,10 @@ topological sort of DAG.
     - Investigate how to make debugging easy (MVP)
     - Investigate how to debug thread pool (MVP)
     - Investigate how to profile pipeline easily (MVP)
+    - Setup basic git action checks (MVP)
+        - all tests
+        - all clang-tidy and format checks
+        - investigate how to test benchmarks
 - Tests & Benchmarks
     - Finish core tests (MVP)
     - Create core benchmark (MVP)
