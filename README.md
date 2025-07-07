@@ -1,5 +1,7 @@
 # baltazar
 
+![Not sure about this logo but it is ok for now :)](assets/logo.png)
+
 Baltazar is lightweight data processing pipeline. Each task is represented as node in directed acyclic graph (DAG) which
 can be executed in parallel by the thread pool or in sequence. Sequence of execution/scheduling is determined by
 topological sort of DAG.
