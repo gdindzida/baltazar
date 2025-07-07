@@ -11,7 +11,7 @@
 namespace threadPool {
 
 template <size_t THREAD_NUM, size_t MAX_QUEUE_SIZE> class ThreadPool {
-  std::array<std::jthread, THREAD_NUM> m_threads;
+  std::array<std::thread, THREAD_NUM> m_threads;
   TaskQueue<MAX_QUEUE_SIZE> m_tasks;
   std::mutex m_mtx;
   std::condition_variable m_addTaskCv;
@@ -21,7 +21,7 @@ template <size_t THREAD_NUM, size_t MAX_QUEUE_SIZE> class ThreadPool {
 public:
   explicit ThreadPool() : m_stop(false) {
     for (int i = 0; i < THREAD_NUM; i++) {
-      m_threads[i] = std::jthread([this] {
+      m_threads[i] = std::thread([this] {
         const IThreadTask *task = &nullTreadTask;
         while (true) {
           std::unique_lock lock(m_mtx);
@@ -41,7 +41,9 @@ public:
     this->shutdown();
 
     for (auto &th : m_threads) {
-      th.join();
+      if (th.joinable()) {
+        th.join();
+      }
     }
   }
 

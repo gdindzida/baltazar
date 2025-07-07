@@ -27,6 +27,8 @@ topological sort of DAG.
         - For embedded complience
     - GPU support for CUDA and openCL
         - What is needed to make it easy to use?
+    - Investigate lock-free structures and implement queue as one (MVP)
+    - Read thread pool chapter in C++ concurrency in action and adapt baltazar (MVP)
     - ??? (MVP)
 - Support
     - DAG visualization (MVP)
