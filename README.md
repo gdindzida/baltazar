@@ -36,10 +36,6 @@ topological sort of DAG.
     - Investigate how to make debugging easy (MVP)
     - Investigate how to debug thread pool (MVP)
     - Investigate how to profile pipeline easily (MVP)
-    - Setup basic git action checks (MVP)
-        - all tests
-        - all clang-tidy and format checks
-        - investigate how to test benchmarks
 - Tests & Benchmarks
     - Finish core tests (MVP)
     - Create core benchmark (MVP)
@@ -49,6 +45,13 @@ topological sort of DAG.
     - ???
 - Bugs
     - ???
+- CI/CD
+    - Setup basic git action checks (MVP)
+        - all tests
+            - Windows testing
+            - Linux testing
+        - all clang-tidy and format checks
+        - investigate how to test benchmarks
 - SoC testing
     - Investigate which board is best for testing (MVP)
         - Memory constraints
@@ -57,3 +60,6 @@ topological sort of DAG.
         - RPI
         - STM32 (MVP)
             - which one?
+    - setup HiLs
+        - remote server???
+        - local server?
