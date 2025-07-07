@@ -16,8 +16,6 @@ topological sort of DAG.
 - Features
     - Switch to C++17 (MVP)
     - Implement abstraction for threads:  (MVP)
-        - replace jthread with thread
-            - investigate std::stop_token
         - implement rtos threads
     - Add retries if queue is full (MVP)
     - Add timeout for a task. Each task can have expected time budget (MVP)
