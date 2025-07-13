@@ -1,12 +1,7 @@
-add_library(thread_pool_lib
-        thread_pool.h
-        thread_task.h
-        thread_task_queue.h
-        thread_pool.cpp
-)
+add_library(thread_pool_lib INTERFACE)
 
-target_include_directories(thread_pool_lib
-        PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}"
+target_include_directories(thread_pool_lib INTERFACE
+        ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 add_subdirectory(test/)

@@ -18,7 +18,6 @@ topological sort of DAG.
 - Features
     - Implement abstraction for threads:  (MVP)
         - implement rtos threads
-    - Add retries if queue is full (MVP)
     - Add timeout for a task. Each task can have expected time budget (MVP)
     - Implement thread priorities (MVP)
     - Remove all occurrences of dynamic_cast (MVP)
@@ -28,6 +27,7 @@ topological sort of DAG.
         - What is needed to make it easy to use?
     - Investigate lock-free structures and implement queue as one (MVP)
     - Read thread pool chapter in C++ concurrency in action and adapt baltazar (MVP)
+    - Does graph size need to be template parameter?
     - ??? (MVP)
 - Support
     - DAG visualization (MVP)
@@ -38,15 +38,19 @@ topological sort of DAG.
     - Investigate how to make debugging easy (MVP)
     - Investigate how to debug thread pool (MVP)
     - Investigate how to profile pipeline easily (MVP)
+    - Make code MISRA compliant
 - Tests & Benchmarks
-    - Finish core tests (MVP)
+    - Finish core tests for serial exec (MVP)
     - Create core benchmark (MVP)
+    - Test that graph cycles exist when one node is added twice or more
 - Plugins
     - CV detection pipeline (MVP)
     - ROS robot manipulator pipeline
     - ???
 - Bugs
-    - ???
+    - topological sort doesn't guarantee order of execution based on dependencies (MVP)
+    - are empty .cpp files needed?
+    - should header files be .hpp or .h??
 - CI/CD
     - Setup basic git action checks (MVP)
         - all tests
@@ -55,6 +59,7 @@ topological sort of DAG.
         - all clang-tidy and format checks
         - investigate how to test benchmarks
 - SoC testing
+    - How to cross compile?
     - Investigate which board is best for testing (MVP)
         - Memory constraints
             - Is it ok for user to provide all the memory thus keeping framework flexible

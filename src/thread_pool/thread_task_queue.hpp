@@ -1,7 +1,7 @@
 #ifndef TASK_QUEUE_H
 #define TASK_QUEUE_H
 
-#include "thread_task.h"
+#include "thread_task.hpp"
 
 #include <array>
 #include <cstdio>
@@ -9,9 +9,9 @@
 namespace threadPool {
 template <size_t MAX_TASKS> class TaskQueue {
   std::array<IThreadTask *, MAX_TASKS> m_tasks;
-  size_t m_head = 0;
-  size_t m_tail = 0;
-  size_t m_size = 0;
+  size_t m_head = 0UL;
+  size_t m_tail = 0UL;
+  size_t m_size = 0UL;
 
 public:
   [[nodiscard]] bool push(IThreadTask *task) {
@@ -20,24 +20,24 @@ public:
     }
 
     m_tasks[m_tail] = task;
-    m_tail = (m_tail + 1) % MAX_TASKS;
+    m_tail = (m_tail + 1UL) % MAX_TASKS;
     m_size++;
     return true;
   }
 
-  const IThreadTask *pop() {
-    const IThreadTask *out = &nullTreadTask;
-    if (m_size <= 0) {
+  const IThreadTask *pop() { // NOLINT
+    const IThreadTask *out = &nullThreadTask;
+    if (m_size <= 0UL) {
       return out;
     }
 
     out = m_tasks[m_head];
-    m_head = (m_head + 1) % MAX_TASKS;
+    m_head = (m_head + 1UL) % MAX_TASKS;
     m_size--;
     return out;
   }
 
-  [[nodiscard]] bool empty() const { return m_size == 0; }
+  [[nodiscard]] bool empty() const { return m_size == 0UL; }
 };
 } // namespace threadPool
 

@@ -1,4 +1,4 @@
-#include "../thread_pool.h"
+#include "../thread_pool.hpp"
 
 #include <benchmark/benchmark.h>
 #include <chrono>
@@ -36,6 +36,7 @@ public:
   ~TestThreadTask() override {};
 
   void run() const override { helperTaskFunction(m_context); }
+  std::string name() const override { return "TestThreadTask"; }
 
 private:
   static void helperTaskFunction(void *context) {
@@ -71,7 +72,7 @@ BENCHMARK(BM_RunSerial)
 // NOLINTNEXTLINE
 static void BM_RunParallel(benchmark::State &state) {
 
-  threadPool::ThreadPool<numberOfThreads, 30> tpool{};
+  threadPool::ThreadPool<numberOfThreads, 0, 30> tpool{};
 
   auto myFunc = [&tpool] {
     BenchmarkData data{baseMilliseconds, jitterMilliseconds};

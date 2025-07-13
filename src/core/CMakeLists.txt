@@ -1,10 +1,7 @@
-add_library(core_lib
-        core.h
-        core.cpp
-)
+add_library(core_lib INTERFACE)
 
-target_include_directories(core_lib
-        PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}"
+target_include_directories(core_lib INTERFACE
+        ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 add_subdirectory(test/)

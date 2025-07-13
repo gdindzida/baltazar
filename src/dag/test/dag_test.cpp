@@ -1,4 +1,4 @@
-#include "../dag.h"
+#include "../dag.hpp"
 #include <gtest/gtest.h>
 
 class TestNodeFunctorA final : public dag::INodeFunctor<int> {
@@ -99,8 +99,9 @@ TEST(DagTest, DeepDependencyChain) {
 
   // Assert
   std::unordered_map<std::string, int> pos;
-  for (int i = 0; i < 5; ++i)
+  for (int i = 0; i < 5; ++i) {
     pos[nodes[i]->name()] = i;
+  }
 
   EXPECT_LT(pos["TestNodeA"], pos["TestNodeB"]);
   EXPECT_LT(pos["TestNodeB"], pos["TestNodeC"]);
