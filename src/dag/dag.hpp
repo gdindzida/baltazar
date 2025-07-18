@@ -134,7 +134,7 @@ private:
   bool m_visited{false};
   bool m_active{false};
   std::string m_name;
-  mutable OUTPUT m_output{}; // TODO see where to store the output
+  mutable OUTPUT m_output{}; // TODO: see where to store the output
   INodeFunctor<OUTPUT, INPUTS...> *m_functor{nullptr};
   mutable std::shared_mutex m_rwMtx;
 };

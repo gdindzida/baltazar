@@ -1,6 +1,6 @@
-add_library(core_lib INTERFACE)
+add_library(baltazar_core_lib INTERFACE)
 
-target_include_directories(core_lib INTERFACE
+target_include_directories(baltazar_core_lib INTERFACE
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
 

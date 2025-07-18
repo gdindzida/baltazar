@@ -1,3 +1,4 @@
-add_executable(thread_pool_test thread_pool_test.cpp)
-target_link_libraries(thread_pool_test PUBLIC gtest_main PRIVATE thread_pool_lib)
+add_executable(baltazar_thread_pool_test thread_pool_test.cpp)
+target_link_libraries(baltazar_thread_pool_test PUBLIC gtest_main PRIVATE baltazar_thread_pool_lib)
 include(GoogleTest)
+

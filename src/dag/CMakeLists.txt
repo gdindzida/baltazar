@@ -1,9 +1,9 @@
-add_library(dag_lib INTERFACE)
+add_library(baltazar_dag_lib INTERFACE)
 
-target_include_directories(dag_lib INTERFACE
+target_include_directories(baltazar_dag_lib INTERFACE
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-target_link_libraries(dag_lib INTERFACE thread_pool_lib utils_lib)
+target_link_libraries(baltazar_dag_lib INTERFACE baltazar_thread_pool_lib baltazar_utils_lib)
 
 add_subdirectory(test/)

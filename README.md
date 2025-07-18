@@ -8,6 +8,12 @@ topological sort of DAG.
 
 ## Roadmap
 
+### How to build, run & debug
+
+-- TODO: instructions for baltazar controller
+-- TODO: setup neovim debug
+
+
 ### Releases
 
 - MVP ~ oct - dec???

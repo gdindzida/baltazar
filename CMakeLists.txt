@@ -24,7 +24,8 @@ FetchContent_Declare(
 set(BENCHMARK_ENABLE_WERROR OFF CACHE BOOL "Don't treat warnings as errors")
 FetchContent_MakeAvailable(googletest benchmark)
 
-add_subdirectory(benchmark/)
-add_subdirectory(examples/)
-add_subdirectory(test/)
+# add_subdirectory(benchmark/)
+# add_subdirectory(examples/)
+# add_subdirectory(test/)
 add_subdirectory(src/)
+
