@@ -47,6 +47,7 @@ def main():
         default="debug",
         help="Select which build to perform action on (default: debug).",
     )
+    parser.add_argument("--print-log", action="store_true", help="Turn on log prints in configure step.")
     args = parser.parse_args()
 
     if args.command == "list":
@@ -72,25 +73,52 @@ def main():
 
     if args.command == "configure":
         if args.config == "all":
-            subprocess.run(CONFIGURE_COMMANDS_MAP["debug"], shell=True)
-            subprocess.run(CONFIGURE_COMMANDS_MAP["release"], shell=True)
+
+            cmd = CONFIGURE_COMMANDS_MAP["debug"]
+            if args.print_log:
+                cmd = cmd + ' -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS -DDEBUGLOG=1"'
+            else:
+                cmd = cmd + ' -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS -UDEBUGLOG"'
+            print("running command: "+cmd)
+            subprocess.run(cmd, shell=True)
+
+            cmd = CONFIGURE_COMMANDS_MAP["release"]
+            if args.print_log:
+                cmd = cmd + ' -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS -DDEBUGLOG=1"'
+            else:
+                cmd = cmd + ' -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS -UDEBUGLOG"'
+            print("running command: "+cmd)
+            subprocess.run(cmd, shell=True)
         else:
-            subprocess.run(CONFIGURE_COMMANDS_MAP[args.config], shell=True)
+            cmd = CONFIGURE_COMMANDS_MAP[args.config]
+            if args.print_log:
+                cmd = cmd + ' -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS -DDEBUGLOG=1"'
+            else:
+                cmd = cmd + ' -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS -UDEBUGLOG"'
+            print("running command: "+cmd)
+            subprocess.run(cmd, shell=True)
 
     if args.command == "build":
         if args.config == "all":
             if args.target:
                 print("WARNING: using taget for config=all is redundant.")
 
-            subprocess.run(BUILD_COMMANDS_MAP["debug"], shell=True)
-            subprocess.run(BUILD_COMMANDS_MAP["release"], shell=True)
+            cmd = BUILD_COMMANDS_MAP["debug"]
+            print("running command: "+cmd)
+            subprocess.run(cmd, shell=True)
+
+            cmd = BUILD_COMMANDS_MAP["release"]
+            print("running command: "+cmd)
+            subprocess.run(cmd, shell=True)
         else:
             cmd = BUILD_COMMANDS_MAP[args.config]
 
             if args.target:
                 cmd = cmd + " --target " + args.target
 
+            print("running command: "+cmd)
             subprocess.run(cmd, shell=True)
+            
 
     if args.command == "run":
         if args.config == "all":
