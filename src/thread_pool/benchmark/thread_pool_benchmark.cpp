@@ -72,7 +72,7 @@ BENCHMARK(BM_RunSerial)
 // NOLINTNEXTLINE
 static void BM_RunParallel(benchmark::State &state) {
 
-  threadPool::ThreadPool<numberOfThreads, 0, 30> tpool{};
+  threadPool::ThreadPool<numberOfThreads, 30> tpool{};
 
   auto myFunc = [&tpool] {
     BenchmarkData data{baseMilliseconds, jitterMilliseconds};
