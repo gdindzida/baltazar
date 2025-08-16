@@ -4,6 +4,7 @@
 #include "thread_task_queue.hpp"
 
 #include <atomic>
+#include <cassert>
 #include <condition_variable>
 #include <iostream>
 #include <mutex>
@@ -17,6 +18,7 @@ template <size_t THREAD_NUM, size_t MAX_QUEUE_SIZE> class ThreadPool {
   std::mutex m_mtx;
   std::condition_variable m_addTaskCv;
   std::condition_variable m_finishTaskCv;
+  std::condition_variable m_popedTaskCv;
   bool m_stop{false};
 
 public:
@@ -43,6 +45,8 @@ public:
 
           task = m_tasks.pop();
 
+          m_popedTaskCv.notify_one();
+
           lock.unlock();
 
           task->run();
@@ -63,12 +67,37 @@ public:
     }
   }
 
-  bool scheduleTask(IThreadTask *task) {
+  bool try_scheduleTask(IThreadTask *task) {
     std::unique_lock lock(m_mtx);
 
     if (!m_tasks.push(task)) {
       return false;
     }
+
+#ifdef DEBUGLOG
+    std::cout << "Scheduling task " << task->name() << "\n";
+#endif
+
+    lock.unlock();
+    m_addTaskCv.notify_one();
+
+    return true;
+  }
+
+  bool scheduleTask(IThreadTask *task) {
+    std::unique_lock lock(m_mtx);
+
+    m_popedTaskCv.wait(lock, [this] { return !m_tasks.full() || m_stop; });
+
+    if (m_stop) {
+      return false;
+    }
+    bool success = m_tasks.push(task);
+    assert(success);
+
+#ifdef DEBUGLOG
+    std::cout << "Scheduling task " << task->name() << "\n";
+#endif
 
     lock.unlock();
     m_addTaskCv.notify_one();

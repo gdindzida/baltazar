@@ -38,6 +38,8 @@ public:
   }
 
   [[nodiscard]] bool empty() const { return m_size == 0UL; }
+
+  [[nodiscard]] bool full() const { return m_size == MAX_TASKS; }
 };
 } // namespace threadPool
 

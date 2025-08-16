@@ -53,7 +53,6 @@ TEST(ThreadPoolTest, CreateThreadsWithOneTaskAndWaitForAll) {
 TEST(ThreadPoolTest, CreateThreadsWithManyTasksAndWaitForAll) {
   // Arrange
   constexpr size_t numThreads = 2;
-  constexpr size_t numOfTries = 10;
   constexpr size_t numOfTasks = 300;
   std::atomic<size_t> testCounter{0};
 
@@ -63,12 +62,8 @@ TEST(ThreadPoolTest, CreateThreadsWithManyTasksAndWaitForAll) {
   // Act
   int counter = 0;
   for (int i = 0; i < numOfTasks; i++) {
-    for (int j = 0; j < numOfTries; j++) {
-      if (threadPool.scheduleTask(&task)) {
-        counter++;
-        break;
-      }
-      std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    if (threadPool.scheduleTask(&task)) {
+      counter++;
     }
   }
   std::atomic stop{false};
@@ -81,7 +76,6 @@ TEST(ThreadPoolTest, CreateThreadsWithManyTasksAndWaitForAll) {
 TEST(ThreadPoolTest, CreateThreadsWithManyTasksAndWaitForAllButStopEarly) {
   // Arrange
   constexpr size_t numThreads = 2;
-  constexpr size_t numOfTries = 10;
   constexpr size_t numOfTasks = 300;
   std::atomic<size_t> testCounter{0};
 
@@ -91,12 +85,33 @@ TEST(ThreadPoolTest, CreateThreadsWithManyTasksAndWaitForAllButStopEarly) {
   // Act
   int counter = 0;
   for (int i = 0; i < numOfTasks; i++) {
-    for (int j = 0; j < numOfTries; j++) {
-      if (threadPool.scheduleTask(&task)) {
-        counter++;
-        break;
-      }
-      std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    if (threadPool.scheduleTask(&task)) {
+      counter++;
+    }
+  }
+  std::atomic stop{false};
+  threadPool.waitForAllTasks(stop);
+  stop.store(true);
+
+  // Assert
+  EXPECT_EQ(counter, numOfTasks);
+}
+
+TEST(ThreadPoolTest, TryCreateThreadsWithManyTasksAndWaitForAllButStopEarly) {
+  // Arrange
+  constexpr size_t numThreads = 2;
+  constexpr size_t numOfTasks = 300;
+  std::atomic<size_t> testCounter{0};
+
+  threadPool::ThreadPool<numThreads, 10> threadPool{};
+  TestThreadTask task{&testCounter};
+
+  // Act
+  int counter = 0;
+  for (int i = 0; i < numOfTasks; i++) {
+    if (threadPool.try_scheduleTask(&task)) {
+      counter++;
+      break;
     }
   }
   std::atomic stop{false};
