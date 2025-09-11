@@ -11,6 +11,7 @@ public:
   virtual ~IThreadTask() = default;
   virtual void run() const = 0;
   virtual std::string name() const = 0;
+  virtual bool shouldSyncWhenDone() const = 0;
 };
 
 class NullThreadTask final : public IThreadTask {
@@ -22,6 +23,7 @@ public:
 
   void run() const override {}
   std::string name() const override { return "NullThreadTask"; }
+  bool shouldSyncWhenDone() const override { return false; }
 };
 
 const NullThreadTask nullThreadTask{};

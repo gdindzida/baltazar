@@ -79,8 +79,7 @@ static void BM_RunParallel(benchmark::State &state) {
     TestThreadTask task{&data};
 
     for (int i = 0; i < numberOfTasks; i++) {
-      while (!tpool.scheduleTask(&task)) {
-      }
+      tpool.scheduleTask(&task);
     }
     std::atomic stop{false};
     tpool.waitForAllTasks(stop);

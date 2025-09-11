@@ -8,13 +8,13 @@
 
 namespace threadPool {
 template <size_t MAX_TASKS> class TaskQueue {
-  std::array<IThreadTask *, MAX_TASKS> m_tasks;
+  std::array<const IThreadTask *, MAX_TASKS> m_tasks;
   size_t m_head = 0UL;
   size_t m_tail = 0UL;
   size_t m_size = 0UL;
 
 public:
-  [[nodiscard]] bool push(IThreadTask *task) {
+  [[nodiscard]] bool push(const IThreadTask *task) {
     if (m_size >= MAX_TASKS) {
       return false;
     }
@@ -40,6 +40,8 @@ public:
   [[nodiscard]] bool empty() const { return m_size == 0UL; }
 
   [[nodiscard]] bool full() const { return m_size == MAX_TASKS; }
+
+  size_t size() const { return m_size; }
 };
 } // namespace threadPool
 
