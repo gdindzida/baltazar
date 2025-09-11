@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-import argparse
-from pathlib import Path
+# Add the directory where *this* file actually resides
 import sys
+from pathlib import Path
+import argparse
 import subprocess
+from typing import List
+from scripts.baltazar_update_targets import collect_targets
 
 BUILD_FOLDERS_MAP = {
         "debug": Path("build-debug") / "bin",
@@ -18,6 +21,18 @@ BUILD_COMMANDS_MAP = {
     "debug": "cmake --build build-debug",
     "release": "cmake --build build-release",
 }
+
+def read_lines_to_list(file_path: str) -> List[str]:
+    """
+    Read a text file and return a list where each element is one line (without the newline character).
+    Blank lines are preserved as empty strings.
+    """
+    path = Path(file_path)
+    if not path.exists():
+        raise FileNotFoundError(f"No such file: {file_path}")
+
+    with path.open("r", encoding="utf-8") as f:
+        return [line.rstrip("\n") for line in f]
 
 def list_baltazar_binaries(config: str):
     # Map config -> build dir
@@ -51,25 +66,10 @@ def main():
     args = parser.parse_args()
 
     if args.command == "list":
-        if args.config == "all":
-            print("config = debug")
-            binaries = list_baltazar_binaries("debug")
-            
-            for p in binaries:
-                print(p.name)
+        all_targets = collect_targets(".")
 
-            print("config = release")
-            binaries = list_baltazar_binaries("release")
-            
-            for p in binaries:
-                print(p.name)
-
-        else:
-            print("config = "+args.config)
-            binaries = list_baltazar_binaries(args.config)
-            
-            for p in binaries:
-                print(p.name)
+        for target in all_targets:
+            print(target)
 
     if args.command == "configure":
         if args.config == "all":
