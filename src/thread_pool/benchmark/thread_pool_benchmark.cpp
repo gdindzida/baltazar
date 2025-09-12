@@ -30,13 +30,14 @@ int waitRandom(const int baseMs, const int jitterMs) {
 
 class TestThreadTask final : public threadPool::IThreadTask {
 public:
-  explicit TestThreadTask(void *ctx) : m_context(ctx) {};
+  explicit TestThreadTask(void *ctx) : m_context(ctx){};
 
   // NOLINTNEXTLINE
-  ~TestThreadTask() override {};
+  ~TestThreadTask() override{};
 
   void run() const override { helperTaskFunction(m_context); }
   std::string name() const override { return "TestThreadTask"; }
+  bool shouldSyncWhenDone() const override { return false; }
 
 private:
   static void helperTaskFunction(void *context) {
