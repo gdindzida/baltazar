@@ -1,4 +1,4 @@
-add_executable(baltazar_utils_test optional_test.cpp)
+add_executable(baltazar_utils_test optional_test.cpp function_traits_test.cpp)
 target_link_libraries(baltazar_utils_test PUBLIC gtest_main PRIVATE baltazar_utils_lib)
 include(GoogleTest)
 

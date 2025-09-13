@@ -1,7 +1,6 @@
 #include "../optional.hpp"
 
 #include <gtest/gtest.h>
-#include <optional>
 
 template <typename T>
 utils::Optional<T> helperFunc(const T &value, bool setValue) {
