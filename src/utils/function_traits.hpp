@@ -27,6 +27,10 @@ template <typename CLASS, typename RET_TYPE, typename... ARGS>
 struct FunctionTraits<RET_TYPE (CLASS::*)(ARGS...) const>
     : FunctionTraits<RET_TYPE(ARGS...)> {};
 
+template <typename CLASS, typename RET_TYPE, typename... ARGS>
+struct FunctionTraits<RET_TYPE (CLASS::*)(ARGS...)>
+    : FunctionTraits<RET_TYPE(ARGS...)> {};
+
 // Anything else
 template <typename F>
 struct FunctionTraits : FunctionTraits<decltype(&F::operator())> {};

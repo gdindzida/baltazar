@@ -1,272 +1,155 @@
 #include "../dag.hpp"
+#include "gtest/gtest.h"
+#include <array>
+#include <functional>
 #include <gtest/gtest.h>
+#include <vector>
 
-class TestNodeFunctorA final : public dag::INodeFunctor<int> {
+class TaskA {
 public:
-  int run() override { return 1111; };
-};
-
-class TestNodeFunctorB final : public dag::INodeFunctor<double, int> {
-public:
-  double run(int i) override { return 123.5; };
-};
-
-class TestNodeFunctorC final : public dag::INodeFunctor<float, double, int> {
-public:
-  float run(const double d, const int i) override {
-    return static_cast<float>(d) + static_cast<float>(i);
+  double operator()(int a, float b) {
+    return static_cast<double>(a) + static_cast<double>(b);
   }
 };
 
-class TestNodeFunctorE final : public dag::INodeFunctor<int, double> {
+class TaskB {
 public:
-  int run(double d) override { return 777; }
+  TaskB(int a) : m_a(a) {}
+
+  int operator()() { return m_a; }
+
+private:
+  int m_a;
 };
 
-class TestNodeFunctorF final : public dag::INodeFunctor<double, double> {
+class TaskC {
 public:
-  double run(double d) override { return 771; }
+  TaskC(float a) : m_a(a) {}
+
+  float operator()() { return m_a; }
+
+private:
+  float m_a;
 };
 
-class TestNodeFunctorG final : public dag::INodeFunctor<double, int> {
-public:
-  double run(int i) override { return 770; }
+struct MyDataType {
+  int someNum;
+  int someOtherNum;
 };
 
-TEST(DagTest, CreateGraphAndGetSortedTasks) {
-  // Arrange
-  const std::array<std::string, 5> names{"TestNodeA", "TestNodeB", "TestNodeC",
-                                         "TestNodeD", "TestNodeE"};
-  TestNodeFunctorA functorA{};
-  TestNodeFunctorB functorB{};
-  TestNodeFunctorC functorC{};
-  TestNodeFunctorE functorE{};
-
-  // Act
-  dag::Node nodeA{&functorA, "TestNodeA"};
-  dag::Node nodeB{&functorB, "TestNodeB"};
-  nodeB.addDependency<0, int>(&nodeA);
-  dag::Node nodeC{&functorC, "TestNodeC"};
-  nodeC.addDependency<1, int>(&nodeA);
-  nodeC.addDependency<0, double>(&nodeB);
-  dag::Node nodeD{&functorB, "TestNodeD"};
-  dag::Node nodeE{&functorE, "TestNodeE"};
-  nodeE.addDependency<0, double>(&nodeD);
-
-  dag::Dag<5> graph{};
-
-  graph.addNode(&nodeA);
-  graph.addNode(&nodeB);
-  graph.addNode(&nodeC);
-  graph.addNode(&nodeD);
-  graph.addNode(&nodeE);
-
-  const auto nodes = graph.getSortedTasks();
-
-  // Assert
-  for (int i = 0; i < 5; ++i) {
-    auto node = nodes[i];
-    EXPECT_EQ(names[i], node->name());
+class TaskD {
+public:
+  std::array<int, 2> operator()(MyDataType a, std::string s) {
+    assert(s == "mystring");
+    return {a.someNum, a.someOtherNum};
   }
-}
+};
 
-TEST(DagTest, DeepDependencyChain) {
+class TaskE {
+public:
+  TaskE(int a, int b) : m_a(a), m_b(b) {}
+
+  MyDataType operator()() { return {m_a, m_b}; }
+
+private:
+  int m_a;
+  int m_b;
+};
+
+class TaskF {
+public:
+  std::string operator()() { return "mystring"; }
+};
+
+TEST(DagTest, ConnectFewNodesAndRunThem) {
   // Arrange
-  TestNodeFunctorA functorA{};
-  TestNodeFunctorB functorB{};
-  TestNodeFunctorC functorC{};
-  TestNodeFunctorE functorE{};
-
-  dag::Node nodeA{&functorA, "TestNodeA"};
-  dag::Node nodeB{&functorB, "TestNodeB"};
-  nodeB.addDependency<0, int>(&nodeA);
-  dag::Node nodeC{&functorC, "TestNodeC"};
-  nodeC.addDependency<1, int>(&nodeA);
-  nodeC.addDependency<0, double>(&nodeB);
-  dag::Node nodeD{&functorB, "TestNodeD"};
-  dag::Node nodeE{&functorE, "TestNodeE"};
-  nodeE.addDependency<0, double>(&nodeD);
-
-  dag::Dag<5> graph{};
-  graph.addNode(&nodeA);
-  graph.addNode(&nodeB);
-  graph.addNode(&nodeC);
-  graph.addNode(&nodeD);
-  graph.addNode(&nodeE);
+  TaskA taskA;
+  TaskB taskB{2};
+  TaskC taskC{3.f};
 
   // Act
-  const auto nodes = graph.getSortedTasks();
+  dag::Node<2, TaskA> nodeA{taskA, "nodeA"};
+  dag::Node<0, TaskB> nodeB{taskB, "nodeB"};
+  dag::Node<0, TaskC> nodeC{taskC, "nodeC"};
 
-  // Assert
-  std::unordered_map<std::string, int> pos;
-  for (int i = 0; i < 5; ++i) {
-    pos[nodes[i]->name()] = i;
+  nodeA.setDependencyAt<0>(nodeB);
+  nodeA.setDependencyAt<1>(nodeC);
+
+  nodeB.run();
+  nodeB.setDone();
+  nodeC.run();
+  nodeC.setDone();
+  if (nodeA.isReady()) {
+    nodeA.run();
   }
 
-  EXPECT_LT(pos["TestNodeA"], pos["TestNodeB"]);
-  EXPECT_LT(pos["TestNodeB"], pos["TestNodeC"]);
-  EXPECT_LT(pos["TestNodeC"], pos["TestNodeD"]);
-  EXPECT_LT(pos["TestNodeD"], pos["TestNodeE"]);
-}
-
-TEST(DagTest, WideDAGBranchingAndMerging) {
-  // Arrange
-  TestNodeFunctorA functorA{};
-  TestNodeFunctorB functorB{};
-  TestNodeFunctorC functorC{};
-  TestNodeFunctorE functorE{};
-
-  dag::Node nodeA{&functorA, "TestNodeA"};
-  dag::Node nodeB{&functorB, "TestNodeB"};
-  nodeB.addDependency<0, int>(&nodeA);
-  dag::Node nodeC{&functorC, "TestNodeC"};
-  nodeC.addDependency<1, int>(&nodeA);
-  nodeC.addDependency<0, double>(&nodeB);
-  dag::Node nodeD{&functorB, "TestNodeD"};
-  dag::Node nodeE{&functorE, "TestNodeE"};
-  nodeE.addDependency<0, double>(&nodeD);
-
-  dag::Dag<5> graph{};
-  graph.addNode(&nodeA);
-  graph.addNode(&nodeB);
-  graph.addNode(&nodeC);
-  graph.addNode(&nodeD);
-  graph.addNode(&nodeE);
-
-  // Act
-  const auto nodes = graph.getSortedTasks();
+  double retValue = *static_cast<double *>(nodeA.getOutput());
 
   // Assert
-  std::unordered_map<std::string, int> pos;
-  for (int i = 0; i < 5; ++i)
-    pos[nodes[i]->name()] = i;
-
-  EXPECT_LT(pos["TestNodeA"], pos["TestNodeB"]);
-  EXPECT_LT(pos["TestNodeA"], pos["TestNodeC"]);
-  EXPECT_LT(pos["TestNodeA"], pos["TestNodeD"]);
-  EXPECT_LT(pos["TestNodeB"], pos["TestNodeE"]);
-  EXPECT_LT(pos["TestNodeC"], pos["TestNodeE"]);
-  EXPECT_LT(pos["TestNodeD"], pos["TestNodeE"]);
+  EXPECT_EQ(retValue, 5.0);
 }
 
-TEST(DagTest, AllNodesDependOnRoot) {
+TEST(DagTest, ConnectFewNodesAndRunThemButOneDepIsNull) {
   // Arrange
-  TestNodeFunctorA functorA{};
-  TestNodeFunctorB functorB{};
-  TestNodeFunctorC functorC{};
-  TestNodeFunctorE functorE{};
-
-  dag::Node nodeA{&functorA, "TestNodeA"};
-  dag::Node nodeB{&functorB, "TestNodeB"};
-  nodeB.addDependency<0, int>(&nodeA);
-  dag::Node nodeC{&functorC, "TestNodeC"};
-  nodeC.addDependency<1, int>(&nodeA);
-  nodeC.addDependency<0, double>(&nodeB);
-  dag::Node nodeD{&functorB, "TestNodeD"};
-  dag::Node nodeE{&functorE, "TestNodeE"};
-  nodeE.addDependency<0, double>(&nodeD);
-
-  dag::Dag<5> graph{};
-  graph.addNode(&nodeA);
-  graph.addNode(&nodeB);
-  graph.addNode(&nodeC);
-  graph.addNode(&nodeD);
-  graph.addNode(&nodeE);
-
-  // Act
-  const auto nodes = graph.getSortedTasks();
-
-  // Assert
-  std::unordered_map<std::string, int> pos;
-  for (int i = 0; i < 5; ++i)
-    pos[nodes[i]->name()] = i;
-
-  for (auto name : {"TestNodeB", "TestNodeC", "TestNodeD", "TestNodeE"}) {
-    EXPECT_LT(pos["TestNodeA"], pos[name]);
-  }
-}
-
-TEST(DagTest, DetectsCycle) {
-  // Arrange
-  TestNodeFunctorE functorE{};
-  TestNodeFunctorF functorF{};
-  TestNodeFunctorG functorG{};
-
-  dag::Node nodeA{&functorE, "TestNodeA"};
-  dag::Node nodeB{&functorG, "TestNodeB"};
-  dag::Node nodeC{&functorF, "TestNodeC"};
-  nodeC.addDependency<0, double>(&nodeB);
-  nodeA.addDependency<0, double>(&nodeC);
-  nodeB.addDependency<0, int>(&nodeA);
-
-  dag::Dag<3> graph{};
-  graph.addNode(&nodeA);
-  graph.addNode(&nodeB);
-  graph.addNode(&nodeC);
+  TaskA taskA;
+  TaskB taskB{2};
 
   // Act & Assert
-  EXPECT_DEATH(
-      {
-        auto tasks = graph.getSortedTasks();
-        (void)tasks;
-      },
-      ".*");
-}
+  dag::Node<2, TaskA> nodeA{taskA, "nodeA"};
+  dag::Node<0, TaskB> nodeB{taskB, "nodeB"};
 
-TEST(DagTest, RunFunctorOnDependencies) {
-  // Arrange
-  TestNodeFunctorA functorA{};
-  TestNodeFunctorB functorB{};
-  TestNodeFunctorC functorC{};
+  nodeA.setDependencyAt<0>(nodeB);
 
-  dag::Node nodeA{&functorA, "TestNodeA"};
-  dag::Node nodeB{&functorB, "TestNodeB"};
-  nodeB.addDependency<0, int>(&nodeA);
-  dag::Node nodeC{&functorC, "TestNodeC"};
-  nodeC.addDependency<1, int>(&nodeA);
-  nodeC.addDependency<0, double>(&nodeB);
-
-  // Act
-  nodeA.run();
   nodeB.run();
-  nodeC.run();
-
-  // Assert
-  const float *const outputC = nodeC.getOutput();
-
-  EXPECT_EQ(*outputC, 1234.5);
+  nodeB.setDone();
+  EXPECT_DEATH(nodeA.isReady(), ".*");
 }
 
-TEST(DagTest, RunFunctorOnDependenciesPointers) {
+TEST(DagTest, ConnectFewNodesAndRunThemButDepIsNotDone) {
   // Arrange
-  TestNodeFunctorA functorA{};
-  TestNodeFunctorB functorB{};
-  TestNodeFunctorC functorC{};
+  TaskA taskA;
+  TaskB taskB{2};
+  TaskC taskC{3.f};
 
-  dag::Node nodeA{&functorA, "TestNodeA"};
-  dag::Node nodeB{&functorB, "TestNodeB"};
-  nodeB.addDependency<0, int>(&nodeA);
-  dag::Node nodeC{&functorC, "TestNodeC"};
-  nodeC.addDependency<1, int>(&nodeA);
-  nodeC.addDependency<0, double>(&nodeB);
+  // Act & Assert
+  dag::Node<2, TaskA> nodeA{taskA, "nodeA"};
+  dag::Node<0, TaskB> nodeB{taskB, "nodeB"};
+  dag::Node<0, TaskC> nodeC{taskC, "nodeC"};
 
-  dag::Dag<3> graph{};
-  graph.addNode(&nodeA);
-  graph.addNode(&nodeB);
-  graph.addNode(&nodeC);
+  nodeA.setDependencyAt<0>(nodeB);
+  nodeA.setDependencyAt<1>(nodeC);
 
-  auto nodes = graph.getSortedTasks();
+  nodeB.run();
+  nodeB.setDone();
+  nodeC.run();
+  EXPECT_DEATH(nodeA.run(), ".*");
+}
+
+TEST(DagTest, ConnectFewNodesAndRunThemNonConvertibleTypes) {
+  // Arrange
+  TaskD taskD;
+  TaskE taskE{2, 3};
+  TaskF taskF;
 
   // Act
-  for (auto *nodePtr : nodes) {
-    const auto *threadTaskPtr =
-        dynamic_cast<threadPool::IThreadTask *>(nodePtr);
+  dag::Node<2, TaskD> nodeD{taskD, "nodeD"};
+  dag::Node<0, TaskE> nodeE{taskE, "nodeE"};
+  dag::Node<0, TaskF> nodeF{taskF, "nodeF"};
 
-    threadTaskPtr->run();
+  nodeD.setDependencyAt<0>(nodeE);
+  nodeD.setDependencyAt<1>(nodeF);
+
+  nodeE.run();
+  nodeE.setDone();
+  nodeF.run();
+  nodeF.setDone();
+  if (nodeD.isReady()) {
+    nodeD.run();
   }
 
-  // Assert
-  const float *const outputC = nodeC.getOutput();
+  auto retValue = *static_cast<std::array<int, 2> *>(nodeD.getOutput());
 
-  EXPECT_EQ(*outputC, 1234.5);
+  // Assert
+  EXPECT_EQ(retValue[0], 2);
+  EXPECT_EQ(retValue[1], 3);
 }
