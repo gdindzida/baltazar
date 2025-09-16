@@ -122,38 +122,6 @@ public:
     return true;
   }
 
-  template <typename Rep, typename Period>
-  bool scheduleTask(IThreadTask *task,
-                    std::chrono::duration<Rep, Period> timeout) {
-    std::unique_lock lock(m_mtx);
-
-    auto status = m_popedTaskCv.wait_for(lock, timeout, [this] {
-      return ((m_numberOfTasks < MAX_QUEUE_SIZE) && !m_scheduledTasks.full()) ||
-             m_stop;
-    });
-
-    if (m_stop) {
-      return false;
-    }
-
-    if (!status) {
-      return false;
-    }
-
-    m_numberOfTasks++;
-    bool success = m_scheduledTasks.push(task);
-    assert(success);
-
-#ifdef DEBUGLOG
-    std::cout << "Scheduling task " << task->name() << "\n";
-#endif
-
-    lock.unlock();
-    m_addTaskCv.notify_one();
-
-    return true;
-  }
-
   bool scheduleTask(IThreadTask *task) {
     std::unique_lock lock(m_mtx);
 
@@ -184,36 +152,6 @@ public:
     std::unique_lock lock(m_mtx);
 
     if (m_doneTasks.empty()) {
-      return utils::Optional<const IThreadTask *>();
-    }
-
-    m_numberOfTasks--;
-    const IThreadTask *retTask = m_doneTasks.pop();
-    assert(retTask != nullptr);
-
-#ifdef DEBUGLOG
-    std::cout << "Reporting done task " << retTask->name() << "\n";
-#endif
-
-    lock.unlock();
-    m_popedTaskCv.notify_one();
-
-    return retTask;
-  }
-
-  template <typename Rep, typename Period>
-  utils::Optional<const IThreadTask *>
-  getNextDoneTask(std::chrono::duration<Rep, Period> timeout) {
-    std::unique_lock lock(m_mtx);
-
-    auto status = m_finishTaskCv.wait_for(
-        lock, timeout, [this] { return !m_doneTasks.empty() || m_stop; });
-
-    if (m_stop) {
-      return utils::Optional<const IThreadTask *>();
-    }
-
-    if (!status) {
       return utils::Optional<const IThreadTask *>();
     }
 

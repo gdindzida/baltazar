@@ -84,29 +84,6 @@ TEST(ThreadPoolTest, CreateThreadsWithManyTasksAndWaitForAll) {
   EXPECT_EQ(counter, numOfTasks);
 }
 
-TEST(ThreadPoolTest, CreateThreadsWithManyTasksAndWaitForAllWithTimeout) {
-  // Arrange
-  constexpr size_t numThreads = 2;
-  constexpr size_t numOfTasks = 10;
-  std::atomic<size_t> testCounter{0};
-
-  threadPool::ThreadPool<numThreads, 10> threadPool{};
-  TestThreadTask task{&testCounter, false};
-
-  // Act
-  int counter = 0;
-  for (int i = 0; i < numOfTasks; i++) {
-    if (threadPool.scheduleTask(&task, std::chrono::milliseconds(2))) {
-      counter++;
-    }
-  }
-  std::atomic stop{false};
-  threadPool.waitForAllTasks(stop);
-
-  // Assert
-  EXPECT_EQ(counter, numOfTasks);
-}
-
 TEST(ThreadPoolTest, CreateThreadsWithManyTasksAndWaitForAllButStopEarly) {
   // Arrange
   constexpr size_t numThreads = 2;
@@ -218,43 +195,6 @@ TEST(ThreadPoolTest, CreateThreadsWithManyTasksAndWaitForDoneTasks) {
   for (int i = 0; i < numOfTasks / 2; i++) {
     doneTaskCounter++;
     auto doneTask = threadPool.getNextDoneTask();
-    EXPECT_TRUE(doneTask.has_value());
-  }
-
-  std::atomic stop{false};
-  threadPool.waitForAllTasks(stop);
-
-  // Assert
-  EXPECT_LE(counter, numOfTasks);
-  EXPECT_EQ(doneTaskCounter, numOfTasks / 2);
-}
-
-TEST(ThreadPoolTest, CreateThreadsWithManyTasksAndWaitForDoneTasksWithTimeout) {
-  // Arrange
-  constexpr size_t numThreads = 2;
-  constexpr size_t numOfTasks = 10;
-  std::atomic<size_t> testCounter{0};
-
-  threadPool::ThreadPool<numThreads, 10> threadPool{};
-  TestThreadTask task{&testCounter, false};
-  TestThreadTask taskSynced{&testCounter, true};
-
-  // Act
-  int counter = 0;
-  for (int i = 0; i < numOfTasks; i++) {
-    TestThreadTask *scheduledTask = &task;
-    if (i % 2 == 0) {
-      scheduledTask = &taskSynced;
-    }
-    if (threadPool.scheduleTask(scheduledTask)) {
-      counter++;
-    }
-  }
-
-  int doneTaskCounter = 0;
-  for (int i = 0; i < numOfTasks / 2; i++) {
-    doneTaskCounter++;
-    auto doneTask = threadPool.getNextDoneTask(std::chrono::milliseconds(3));
     EXPECT_TRUE(doneTask.has_value());
   }
 
