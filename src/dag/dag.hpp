@@ -15,6 +15,7 @@
 namespace dag {
 
 template <size_t NUM_OF_EDGES, typename FUNCTOR> class Node;
+template <size_t NUM_OF_NODES> class NodeList;
 
 class INode {
 public:
@@ -24,10 +25,22 @@ public:
   virtual bool isDone() const = 0;
   virtual void setDone() = 0;
   virtual void reset() = 0;
-  virtual void *getOutput() = 0;
+  virtual void *getOutputPtr() = 0;
+  virtual size_t numberOfDeps() = 0;
+  virtual INode *getDepAt(size_t index) = 0;
+  virtual std::string name() = 0;
+
+protected:
+  virtual bool isActive() = 0;
+  virtual bool isVisited() = 0;
+  virtual void setVisited() = 0;
+  virtual void activate() = 0;
+  virtual void deactivate() = 0;
+  virtual void resetVisited() = 0;
 
 private:
   template <size_t N, typename F> friend class Node;
+  template <size_t N> friend class NodeList;
 };
 
 template <size_t NUM_OF_DEPS, typename FUNCTOR>
@@ -57,6 +70,8 @@ public:
 
     m_deps[I] = &otherNode;
   }
+
+  Output &getOutputRef() { return m_output; }
 
   // INode functionality
   bool isReady() const override {
@@ -92,7 +107,19 @@ public:
   }
 
   // INode functionality
-  void *getOutput() override { return static_cast<void *>(&m_output); }
+  void *getOutputPtr() override { return static_cast<void *>(&m_output); }
+
+  // INode functionality
+  INode *getDepAt(size_t index) override {
+    assert(index < NUM_OF_DEPS);
+    return m_deps[index];
+  }
+
+  // INode functionality
+  std::string name() override { return m_name; }
+
+  // INode functionality
+  size_t numberOfDeps() override { return NUM_OF_DEPS; }
 
   // IThreadTask functionality
   void run() const override {
@@ -106,10 +133,23 @@ public:
   // IThreadTask functionality
   bool shouldSyncWhenDone() const override { return true; }
 
+protected:
+  bool isActive() override { return m_active; }
+
+  bool isVisited() override { return m_visited; }
+
+  void setVisited() override { m_visited = true; }
+
+  void activate() override { m_active = true; }
+
+  void deactivate() override { m_active = false; }
+
+  void resetVisited() override { m_visited = false; }
+
 private:
   template <std::size_t... Is> void runImpl(std::index_sequence<Is...>) const {
     m_output = m_functor(*static_cast<std::tuple_element_t<Is, Args> *>(
-        m_deps[Is]->getOutput())...);
+        m_deps[Is]->getOutputPtr())...);
   }
 
   mutable FUNCTOR m_functor;
@@ -118,6 +158,66 @@ private:
   bool m_done{false};
   mutable Output m_output;
   std::string m_name;
+  bool m_active{false};
+  bool m_visited{false};
+};
+
+template <size_t NUM_OF_NODES> class NodeList {
+public:
+  NodeList() {}
+
+  void addNode(INode *node) {
+    assert(m_size < NUM_OF_NODES);
+    m_nodes[m_size] = node;
+    m_size++;
+  }
+
+  INode *getNodeAt(size_t index) {
+    assert(index < m_size);
+    return m_nodes[index];
+  }
+
+  size_t getNumberOfNodes() { return m_size; }
+
+  void sortNodes() {
+    std::array<INode *, NUM_OF_NODES> sortedNodes{};
+    size_t sortedNodesSize{0};
+
+    for (size_t nodeIndex = 0; nodeIndex < m_size; nodeIndex++) {
+      INode *currentNode = m_nodes[nodeIndex];
+      dfs(currentNode, sortedNodes, sortedNodesSize);
+    }
+
+    assert(sortedNodesSize == m_size);
+    for (size_t nodeIndex = 0; nodeIndex < sortedNodesSize; nodeIndex++) {
+      m_nodes[nodeIndex] = sortedNodes[nodeIndex];
+      m_nodes[nodeIndex]->resetVisited();
+    }
+  }
+
+private:
+  void dfs(INode *node, std::array<INode *, NUM_OF_NODES> &sortedNodes,
+           size_t &sortedNodesSize) const {
+    assert(!node->isActive());
+
+    if (node->isVisited()) {
+      return;
+    }
+
+    node->setVisited();
+    node->activate();
+    if (node->numberOfDeps() > 0) {
+      for (int depIndex = 0; depIndex < node->numberOfDeps(); ++depIndex) {
+        dfs(node->getDepAt(depIndex), sortedNodes, sortedNodesSize);
+      }
+    }
+    node->deactivate();
+    sortedNodes[sortedNodesSize] = node;
+    sortedNodesSize++;
+  }
+
+  std::array<INode *, NUM_OF_NODES> m_nodes;
+  size_t m_size{0};
 };
 
 } // namespace dag

@@ -3,6 +3,7 @@
 #include <array>
 #include <functional>
 #include <gtest/gtest.h>
+#include <ostream>
 #include <vector>
 
 class TaskA {
@@ -61,6 +62,15 @@ public:
   std::string operator()() { return "mystring"; }
 };
 
+class TaskG {
+public:
+  double operator()(double a, std::array<int, 2> b) {
+    return a + static_cast<double>(b[0] + b[1]);
+  }
+
+private:
+};
+
 TEST(DagTest, ConnectFewNodesAndRunThem) {
   // Arrange
   TaskA taskA;
@@ -83,7 +93,7 @@ TEST(DagTest, ConnectFewNodesAndRunThem) {
     nodeA.run();
   }
 
-  double retValue = *static_cast<double *>(nodeA.getOutput());
+  double retValue = *static_cast<double *>(nodeA.getOutputPtr());
 
   // Assert
   EXPECT_EQ(retValue, 5.0);
@@ -147,9 +157,60 @@ TEST(DagTest, ConnectFewNodesAndRunThemNonConvertibleTypes) {
     nodeD.run();
   }
 
-  auto retValue = *static_cast<std::array<int, 2> *>(nodeD.getOutput());
+  auto retValue = *static_cast<std::array<int, 2> *>(nodeD.getOutputPtr());
+  auto retValueRef = nodeD.getOutputRef();
 
   // Assert
   EXPECT_EQ(retValue[0], 2);
   EXPECT_EQ(retValue[1], 3);
+  EXPECT_EQ(retValue[0], retValueRef[0]);
+  EXPECT_EQ(retValue[1], retValueRef[1]);
+}
+
+TEST(DagTest, CreateGraphAndGetSortedTasks) {
+  // Arrange
+  const std::array<std::string, 7> names{"nodeB", "nodeC", "nodeA", "nodeE",
+                                         "nodeF", "nodeD", "nodeG"};
+  TaskA taskA;
+  TaskB taskB{2};
+  TaskC taskC{3.f};
+  TaskD taskD;
+  TaskE taskE{2, 3};
+  TaskF taskF;
+  TaskG taskG;
+
+  // Act
+  dag::Node<2, TaskA> nodeA{taskA, "nodeA"};
+  dag::Node<0, TaskB> nodeB{taskB, "nodeB"};
+  dag::Node<0, TaskC> nodeC{taskC, "nodeC"};
+  nodeA.setDependencyAt<0>(nodeB);
+  nodeA.setDependencyAt<1>(nodeC);
+
+  dag::Node<2, TaskD> nodeD{taskD, "nodeD"};
+  dag::Node<0, TaskE> nodeE{taskE, "nodeE"};
+  dag::Node<0, TaskF> nodeF{taskF, "nodeF"};
+  nodeD.setDependencyAt<0>(nodeE);
+  nodeD.setDependencyAt<1>(nodeF);
+
+  dag::Node<2, TaskG> nodeG{taskG, "nodeG"};
+  nodeG.setDependencyAt<0>(nodeA);
+  nodeG.setDependencyAt<1>(nodeD);
+
+  dag::NodeList<7> nodeList;
+
+  nodeList.addNode(&nodeA);
+  nodeList.addNode(&nodeB);
+  nodeList.addNode(&nodeC);
+  nodeList.addNode(&nodeD);
+  nodeList.addNode(&nodeE);
+  nodeList.addNode(&nodeF);
+  nodeList.addNode(&nodeG);
+
+  nodeList.sortNodes();
+
+  // Assert
+  for (int i = 0; i < nodeList.getNumberOfNodes(); ++i) {
+    auto node = nodeList.getNodeAt(i);
+    EXPECT_EQ(names[i], nodeList.getNodeAt(i)->name());
+  }
 }
