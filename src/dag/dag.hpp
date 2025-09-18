@@ -4,8 +4,10 @@
 #include "../thread_pool/thread_task.hpp"
 #include "../utils/function_traits.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cassert>
+#include <functional>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -29,6 +31,10 @@ public:
   virtual size_t numberOfDeps() = 0;
   virtual INode *getDepAt(size_t index) = 0;
   virtual std::string name() = 0;
+  virtual void setPriority(size_t prio) = 0;
+  virtual size_t getPriority() const = 0;
+  virtual void setDepth(size_t depth) = 0;
+  virtual size_t getDepth() const = 0;
 
 protected:
   virtual bool isActive() = 0;
@@ -121,6 +127,16 @@ public:
   // INode functionality
   size_t numberOfDeps() override { return NUM_OF_DEPS; }
 
+  // INode functionality
+  void setPriority(size_t prio) { m_prio = prio; }
+
+  // INode functionality
+  size_t getPriority() const { return m_prio; }
+
+  void setDepth(size_t depth) { m_depth = depth; }
+
+  size_t getDepth() const { return m_depth; }
+
   // IThreadTask functionality
   void run() const override {
     assert(this->isReady());
@@ -160,6 +176,16 @@ private:
   std::string m_name;
   bool m_active{false};
   bool m_visited{false};
+  size_t m_depth{0};
+  size_t m_prio{0};
+};
+
+enum class SortType {
+  Topological,
+  Depth,
+  Priority,
+  DepthOrPriority,
+  CustomPriority,
 };
 
 template <size_t NUM_OF_NODES> class NodeList {
@@ -179,13 +205,45 @@ public:
 
   size_t getNumberOfNodes() { return m_size; }
 
-  void sortNodes() {
+  void sortNodes(
+      SortType sortType = SortType::Topological,
+      std::function<bool(const INode *, const INode *)> customCompare =
+          [](const INode *, const INode *) { return false; }) {
     std::array<INode *, NUM_OF_NODES> sortedNodes{};
     size_t sortedNodesSize{0};
 
     for (size_t nodeIndex = 0; nodeIndex < m_size; nodeIndex++) {
       INode *currentNode = m_nodes[nodeIndex];
       dfs(currentNode, sortedNodes, sortedNodesSize);
+    }
+
+    if (sortType == SortType::Depth) {
+      std::sort(sortedNodes.begin(), sortedNodes.end(),
+                [](const INode *a, const INode *b) {
+                  return a->getDepth() < b->getDepth();
+                });
+    }
+
+    if (sortType == SortType::Priority) {
+      std::sort(sortedNodes.begin(), sortedNodes.end(),
+                [](const INode *a, const INode *b) {
+                  return a->getPriority() > b->getPriority();
+                });
+    }
+
+    if (sortType == SortType::DepthOrPriority) {
+      std::sort(sortedNodes.begin(), sortedNodes.end(),
+                [](const INode *a, const INode *b) {
+                  if (a->getDepth() != b->getDepth()) {
+                    return a->getDepth() < b->getDepth();
+                  }
+                  return a->getPriority() > b->getPriority();
+                });
+    }
+
+    if (sortType == SortType::CustomPriority) {
+      assert(customCompare != nullptr);
+      std::sort(sortedNodes.begin(), sortedNodes.end(), customCompare);
     }
 
     assert(sortedNodesSize == m_size);
@@ -208,7 +266,9 @@ private:
     node->activate();
     if (node->numberOfDeps() > 0) {
       for (int depIndex = 0; depIndex < node->numberOfDeps(); ++depIndex) {
-        dfs(node->getDepAt(depIndex), sortedNodes, sortedNodesSize);
+        auto *depNode = node->getDepAt(depIndex);
+        dfs(depNode, sortedNodes, sortedNodesSize);
+        node->setDepth(std::max(node->getDepth(), depNode->getDepth() + 1UL));
       }
     }
     node->deactivate();

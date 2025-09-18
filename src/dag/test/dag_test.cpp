@@ -212,5 +212,236 @@ TEST(DagTest, CreateGraphAndGetSortedTasks) {
   for (int i = 0; i < nodeList.getNumberOfNodes(); ++i) {
     auto node = nodeList.getNodeAt(i);
     EXPECT_EQ(names[i], nodeList.getNodeAt(i)->name());
+    // std::cout << nodeList.getNodeAt(i)->name() << "->"
+    //           << nodeList.getNodeAt(i)->getDepth() << std::endl;
+  }
+}
+
+TEST(DagTest, CreateGraphAndGetSortedTasksPerDepth) {
+  // Arrange
+  const std::array<std::string, 7> names{"nodeB", "nodeC", "nodeE", "nodeF",
+                                         "nodeA", "nodeD", "nodeG"};
+  TaskA taskA;
+  TaskB taskB{2};
+  TaskC taskC{3.f};
+  TaskD taskD;
+  TaskE taskE{2, 3};
+  TaskF taskF;
+  TaskG taskG;
+
+  // Act
+  dag::Node<2, TaskA> nodeA{taskA, "nodeA"};
+  dag::Node<0, TaskB> nodeB{taskB, "nodeB"};
+  dag::Node<0, TaskC> nodeC{taskC, "nodeC"};
+  nodeA.setDependencyAt<0>(nodeB);
+  nodeA.setDependencyAt<1>(nodeC);
+
+  dag::Node<2, TaskD> nodeD{taskD, "nodeD"};
+  dag::Node<0, TaskE> nodeE{taskE, "nodeE"};
+  dag::Node<0, TaskF> nodeF{taskF, "nodeF"};
+  nodeD.setDependencyAt<0>(nodeE);
+  nodeD.setDependencyAt<1>(nodeF);
+
+  dag::Node<2, TaskG> nodeG{taskG, "nodeG"};
+  nodeG.setDependencyAt<0>(nodeA);
+  nodeG.setDependencyAt<1>(nodeD);
+
+  dag::NodeList<7> nodeList;
+
+  nodeList.addNode(&nodeA);
+  nodeList.addNode(&nodeB);
+  nodeList.addNode(&nodeC);
+  nodeList.addNode(&nodeD);
+  nodeList.addNode(&nodeE);
+  nodeList.addNode(&nodeF);
+  nodeList.addNode(&nodeG);
+
+  nodeList.sortNodes(dag::SortType::Depth);
+
+  // Assert
+  for (int i = 0; i < nodeList.getNumberOfNodes(); ++i) {
+    auto node = nodeList.getNodeAt(i);
+    EXPECT_EQ(names[i], nodeList.getNodeAt(i)->name());
+    // std::cout << nodeList.getNodeAt(i)->name() << "->"
+    //           << nodeList.getNodeAt(i)->getDepth() << std::endl;
+  }
+}
+
+TEST(DagTest, CreateGraphAndGetSortedTasksPerPriority) {
+  // Arrange
+  const std::array<std::string, 7> names{"nodeF", "nodeE", "nodeD", "nodeG",
+                                         "nodeC", "nodeB", "nodeA"};
+  TaskA taskA;
+  TaskB taskB{2};
+  TaskC taskC{3.f};
+  TaskD taskD;
+  TaskE taskE{2, 3};
+  TaskF taskF;
+  TaskG taskG;
+
+  // Act
+  dag::Node<2, TaskA> nodeA{taskA, "nodeA"};
+  nodeA.setPriority(1);
+  dag::Node<0, TaskB> nodeB{taskB, "nodeB"};
+  nodeB.setPriority(2);
+  dag::Node<0, TaskC> nodeC{taskC, "nodeC"};
+  nodeC.setPriority(3);
+  nodeA.setDependencyAt<0>(nodeB);
+  nodeA.setDependencyAt<1>(nodeC);
+
+  dag::Node<2, TaskD> nodeD{taskD, "nodeD"};
+  nodeD.setPriority(6);
+  dag::Node<0, TaskE> nodeE{taskE, "nodeE"};
+  nodeE.setPriority(7);
+  dag::Node<0, TaskF> nodeF{taskF, "nodeF"};
+  nodeF.setPriority(9);
+  nodeD.setDependencyAt<0>(nodeE);
+  nodeD.setDependencyAt<1>(nodeF);
+
+  dag::Node<2, TaskG> nodeG{taskG, "nodeG"};
+  nodeG.setPriority(4);
+  nodeG.setDependencyAt<0>(nodeA);
+  nodeG.setDependencyAt<1>(nodeD);
+
+  dag::NodeList<7> nodeList;
+
+  nodeList.addNode(&nodeA);
+  nodeList.addNode(&nodeB);
+  nodeList.addNode(&nodeC);
+  nodeList.addNode(&nodeD);
+  nodeList.addNode(&nodeE);
+  nodeList.addNode(&nodeF);
+  nodeList.addNode(&nodeG);
+
+  nodeList.sortNodes(dag::SortType::Priority);
+
+  // Assert
+  for (int i = 0; i < nodeList.getNumberOfNodes(); ++i) {
+    auto node = nodeList.getNodeAt(i);
+    EXPECT_EQ(names[i], nodeList.getNodeAt(i)->name());
+    // std::cout << nodeList.getNodeAt(i)->name() << "->"
+    //           << nodeList.getNodeAt(i)->getPriority() << std::endl;
+  }
+}
+
+TEST(DagTest, CreateGraphAndGetSortedTasksPerDepthOrPriority) {
+  // Arrange
+  const std::array<std::string, 7> names{"nodeB", "nodeF", "nodeE", "nodeC",
+                                         "nodeA", "nodeD", "nodeG"};
+  TaskA taskA;
+  TaskB taskB{2};
+  TaskC taskC{3.f};
+  TaskD taskD;
+  TaskE taskE{2, 3};
+  TaskF taskF;
+  TaskG taskG;
+
+  // Act
+  dag::Node<2, TaskA> nodeA{taskA, "nodeA"};
+  nodeA.setPriority(10);
+  dag::Node<0, TaskB> nodeB{taskB, "nodeB"};
+  nodeB.setPriority(20);
+  dag::Node<0, TaskC> nodeC{taskC, "nodeC"};
+  nodeC.setPriority(3);
+  nodeA.setDependencyAt<0>(nodeB);
+  nodeA.setDependencyAt<1>(nodeC);
+
+  dag::Node<2, TaskD> nodeD{taskD, "nodeD"};
+  nodeD.setPriority(6);
+  dag::Node<0, TaskE> nodeE{taskE, "nodeE"};
+  nodeE.setPriority(7);
+  dag::Node<0, TaskF> nodeF{taskF, "nodeF"};
+  nodeF.setPriority(9);
+  nodeD.setDependencyAt<0>(nodeE);
+  nodeD.setDependencyAt<1>(nodeF);
+
+  dag::Node<2, TaskG> nodeG{taskG, "nodeG"};
+  nodeG.setPriority(4);
+  nodeG.setDependencyAt<0>(nodeA);
+  nodeG.setDependencyAt<1>(nodeD);
+
+  dag::NodeList<7> nodeList;
+
+  nodeList.addNode(&nodeA);
+  nodeList.addNode(&nodeB);
+  nodeList.addNode(&nodeC);
+  nodeList.addNode(&nodeD);
+  nodeList.addNode(&nodeE);
+  nodeList.addNode(&nodeF);
+  nodeList.addNode(&nodeG);
+
+  nodeList.sortNodes(dag::SortType::DepthOrPriority);
+
+  // Assert
+  for (int i = 0; i < nodeList.getNumberOfNodes(); ++i) {
+    auto node = nodeList.getNodeAt(i);
+    EXPECT_EQ(names[i], nodeList.getNodeAt(i)->name());
+    // std::cout << nodeList.getNodeAt(i)->name() << "->"
+    //           << nodeList.getNodeAt(i)->getDepth() << ", "
+    //           << nodeList.getNodeAt(i)->getPriority() << std::endl;
+  }
+}
+
+TEST(DagTest, CreateGraphAndGetSortedTasksPerCustomPriority) {
+  // Arrange
+  const std::array<std::string, 7> names{"nodeC", "nodeG", "nodeD", "nodeE",
+                                         "nodeF", "nodeA", "nodeB"};
+  TaskA taskA;
+  TaskB taskB{2};
+  TaskC taskC{3.f};
+  TaskD taskD;
+  TaskE taskE{2, 3};
+  TaskF taskF;
+  TaskG taskG;
+
+  // Act
+  dag::Node<2, TaskA> nodeA{taskA, "nodeA"};
+  nodeA.setPriority(10);
+  dag::Node<0, TaskB> nodeB{taskB, "nodeB"};
+  nodeB.setPriority(20);
+  dag::Node<0, TaskC> nodeC{taskC, "nodeC"};
+  nodeC.setPriority(3);
+  nodeA.setDependencyAt<0>(nodeB);
+  nodeA.setDependencyAt<1>(nodeC);
+
+  dag::Node<2, TaskD> nodeD{taskD, "nodeD"};
+  nodeD.setPriority(6);
+  dag::Node<0, TaskE> nodeE{taskE, "nodeE"};
+  nodeE.setPriority(7);
+  dag::Node<0, TaskF> nodeF{taskF, "nodeF"};
+  nodeF.setPriority(9);
+  nodeD.setDependencyAt<0>(nodeE);
+  nodeD.setDependencyAt<1>(nodeF);
+
+  dag::Node<2, TaskG> nodeG{taskG, "nodeG"};
+  nodeG.setPriority(4);
+  nodeG.setDependencyAt<0>(nodeA);
+  nodeG.setDependencyAt<1>(nodeD);
+
+  dag::NodeList<7> nodeList;
+
+  nodeList.addNode(&nodeA);
+  nodeList.addNode(&nodeB);
+  nodeList.addNode(&nodeC);
+  nodeList.addNode(&nodeD);
+  nodeList.addNode(&nodeE);
+  nodeList.addNode(&nodeF);
+  nodeList.addNode(&nodeG);
+
+  nodeList.sortNodes(dag::SortType::CustomPriority,
+                     [](const dag::INode *a, const dag::INode *b) {
+                       return b->getPriority() > a->getPriority();
+                     });
+
+  // Assert
+  for (int i = 0; i < nodeList.getNumberOfNodes(); ++i) {
+    auto node = nodeList.getNodeAt(i);
+    EXPECT_EQ(names[i], nodeList.getNodeAt(i)->name());
+    // std::cout << nodeList.getNodeAt(i)->name() << "->"
+    //           << nodeList.getNodeAt(i)->getDepth() << ", "
+    //           << nodeList.getNodeAt(i)->getPriority() << " = "
+    //           << nodeList.getNodeAt(i)->getDepth() +
+    //                  nodeList.getNodeAt(i)->getPriority()
+    //           << std::endl;
   }
 }
