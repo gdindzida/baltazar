@@ -8,144 +8,214 @@
 
 constexpr size_t numberOfIterations = 1;
 constexpr size_t numberOfLoops = 1000;
-constexpr size_t baseMilliseconds = 10;
-constexpr size_t jitterMilliseconds = 5;
 constexpr size_t numberOfThreads = 8;
 
-struct BenchmarkData {
-  int _baseMilliseconds;
-  int _jitterMilliseconds;
-};
-
-int waitRandom(const int baseMs, const int jitterMs) {
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_int_distribution dist(0, jitterMs);
-
-  const int delay = baseMs + dist(gen);
-
-  std::this_thread::sleep_for(std::chrono::milliseconds(delay));
-
-  return 0;
-}
-
-struct HelperStruct {
-  std::atomic<size_t> *_counter;
-  size_t _milliseconds;
-  size_t _jitterMilliseconds;
-};
-
-static void helperTaskFunction(const HelperStruct &context) {
-  context._counter->fetch_add(1UL);
-  waitRandom(static_cast<int>(context._milliseconds),
-             static_cast<int>(context._jitterMilliseconds));
-}
-
-class TestNodeFunctorA final : public dag::INodeFunctor<int> {
+class TaskA {
 public:
-  static constexpr int _result = 1111;
+  double operator()(int a, float b) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    return static_cast<double>(a) + static_cast<double>(b);
+  }
+};
 
-  explicit TestNodeFunctorA(const HelperStruct &ctx) : m_context(ctx) {}
+class TaskB {
+public:
+  TaskB(int a) : m_a(a) {}
 
-  int run() override {
-    helperTaskFunction(m_context);
-    return _result;
+  int operator()() {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    return m_a;
   }
 
 private:
-  HelperStruct m_context;
+  int m_a;
 };
 
-class TestNodeFunctorB final : public dag::INodeFunctor<double> {
+class TaskC {
 public:
-  static constexpr double _result = 123.5;
+  TaskC(float a) : m_a(a) {}
 
-  explicit TestNodeFunctorB(const HelperStruct &ctx) : m_context(ctx) {}
-
-  double run() override {
-    helperTaskFunction(m_context);
-    return _result;
+  float operator()() {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    return m_a;
   }
 
 private:
-  HelperStruct m_context;
+  float m_a;
 };
 
-class TestNodeFunctorC final : public dag::INodeFunctor<float, double, int> {
-public:
-  explicit TestNodeFunctorC(const HelperStruct &ctx) : m_context(ctx) {}
+struct MyDataType {
+  int someNum;
+  int someOtherNum;
+};
 
-  float run(const double d, const int i) override {
-    helperTaskFunction(m_context);
-    return static_cast<float>(d) + static_cast<float>(i);
+class TaskD {
+public:
+  std::array<int, 2> operator()(MyDataType a, std::string s) {
+    assert(s == "mystring");
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    return {a.someNum, a.someOtherNum};
+  }
+};
+
+class TaskE {
+public:
+  TaskE(int a, int b) : m_a(a), m_b(b) {}
+
+  MyDataType operator()() {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    return {m_a, m_b};
   }
 
 private:
-  HelperStruct m_context;
+  int m_a;
+  int m_b;
+};
+
+class TaskF {
+public:
+  std::string operator()() {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    return "mystring";
+  }
+};
+
+class TaskG {
+public:
+  double operator()(double a, std::array<int, 2> b) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    m_sum += a + static_cast<double>(b[0] + b[1]);
+    return m_sum;
+  }
+
+  void set(double value) { m_sum = value; }
+
+private:
+  double m_sum{0.0};
 };
 
 // NOLINTNEXTLINE
 static void BM_RunSerial(benchmark::State &state) {
+  std::map<std::string, size_t> indexMap{
+      {"nodeA", 1}, {"nodeB", 2}, {"nodeC", 3}, {"nodeD", 4},
+      {"nodeE", 5}, {"nodeF", 6}, {"nodeG", 7}};
+  dag::NodeList<7> nodeList{};
+  TaskA taskA;
+  TaskB taskB{2};
+  TaskC taskC{3.f};
+  TaskD taskD;
+  TaskE taskE{2, 6};
+  TaskF taskF;
+  TaskG taskG;
+  const std::array<size_t, 7> m_names{indexMap["nodeB"], indexMap["nodeF"],
+                                      indexMap["nodeE"], indexMap["nodeC"],
+                                      indexMap["nodeA"], indexMap["nodeD"],
+                                      indexMap["nodeG"]};
 
-  std::atomic<size_t> testCounter{0};
+  static dag::Node<2, TaskA> nodeA{taskA, indexMap["nodeA"]};
+  nodeA.setPriority(10);
+  static dag::Node<0, TaskB> nodeB{taskB, indexMap["nodeB"]};
+  nodeB.setPriority(20);
+  static dag::Node<0, TaskC> nodeC{taskC, indexMap["nodeC"]};
+  nodeC.setPriority(3);
+  nodeA.setDependencyAt<0>(nodeB);
+  nodeA.setDependencyAt<1>(nodeC);
 
-  TestNodeFunctorA functorA{{&testCounter, 1UL, 3UL}};
-  TestNodeFunctorB functorB{{&testCounter, 10UL, 1UL}};
-  TestNodeFunctorC functorC{{&testCounter, 1UL, 1UL}};
+  static dag::Node<2, TaskD> nodeD{taskD, indexMap["nodeD"]};
+  nodeD.setPriority(6);
+  static dag::Node<0, TaskE> nodeE{taskE, indexMap["nodeE"]};
+  nodeE.setPriority(7);
+  static dag::Node<0, TaskF> nodeF{taskF, indexMap["nodeF"]};
+  nodeF.setPriority(9);
+  nodeD.setDependencyAt<0>(nodeE);
+  nodeD.setDependencyAt<1>(nodeF);
 
-  dag::Node nodeA{&functorA, "TestNodeA"};
-  dag::Node nodeB{&functorB, "TestNodeB"};
-  // dag::Node nodeC{&functorC, "TestNodeC"};
-  // nodeC.addDependency<1, int>(&nodeA);
-  // nodeC.addDependency<0, double>(&nodeB);
+  static dag::Node<2, TaskG> nodeG{taskG, indexMap["nodeG"]};
+  taskG.set(0.0);
+  nodeG = {taskG, indexMap["nodeG"]};
+  nodeG.setPriority(4);
+  nodeG.setDependencyAt<0>(nodeA);
+  nodeG.setDependencyAt<1>(nodeD);
 
-  dag::Dag<2> graph{};
-  graph.addNode(&nodeA);
-  graph.addNode(&nodeB);
-  // graph.addNode(&nodeC);
+  nodeList.addNode(&nodeA);
+  nodeList.addNode(&nodeB);
+  nodeList.addNode(&nodeC);
+  nodeList.addNode(&nodeD);
+  nodeList.addNode(&nodeE);
+  nodeList.addNode(&nodeF);
+  nodeList.addNode(&nodeG);
+
+  nodeList.sortNodes(dag::SortType::DepthOrPriority);
 
   std::atomic<bool> stopFlag{false};
 
   for (auto _ : state) {
-    core::runGraphSerialNTimes<2>(graph, stopFlag, numberOfLoops);
+    core::runNodeListSerialNTimes(nodeList, stopFlag, numberOfLoops);
   }
-
-  assert(testCounter == 2 * numberOfLoops);
 }
-// BENCHMARK(BM_RunSerial)
-//     ->Unit(benchmark::kMillisecond)
-//     ->Iterations(numberOfIterations);
+BENCHMARK(BM_RunSerial)
+    ->Unit(benchmark::kMillisecond)
+    ->Iterations(numberOfIterations);
 
 // NOLINTNEXTLINE
 static void BM_RunParallel(benchmark::State &state) {
+  std::map<std::string, size_t> indexMap{
+      {"nodeA", 1}, {"nodeB", 2}, {"nodeC", 3}, {"nodeD", 4},
+      {"nodeE", 5}, {"nodeF", 6}, {"nodeG", 7}};
+  dag::NodeList<7> m_nodeList{};
+  TaskA taskA;
+  TaskB taskB{2};
+  TaskC taskC{3.f};
+  TaskD taskD;
+  TaskE taskE{2, 6};
+  TaskF taskF;
+  TaskG taskG;
+  const std::array<size_t, 7> m_names{indexMap["nodeB"], indexMap["nodeF"],
+                                      indexMap["nodeE"], indexMap["nodeC"],
+                                      indexMap["nodeA"], indexMap["nodeD"],
+                                      indexMap["nodeG"]};
 
-  constexpr bool shouldWaitForPrevioius = false;
+  static dag::Node<2, TaskA> nodeA{taskA, indexMap["nodeA"]};
+  nodeA.setPriority(10);
+  static dag::Node<0, TaskB> nodeB{taskB, indexMap["nodeB"]};
+  nodeB.setPriority(20);
+  static dag::Node<0, TaskC> nodeC{taskC, indexMap["nodeC"]};
+  nodeC.setPriority(3);
+  nodeA.setDependencyAt<0>(nodeB);
+  nodeA.setDependencyAt<1>(nodeC);
 
-  std::atomic<size_t> testCounter{0};
+  static dag::Node<2, TaskD> nodeD{taskD, indexMap["nodeD"]};
+  nodeD.setPriority(6);
+  static dag::Node<0, TaskE> nodeE{taskE, indexMap["nodeE"]};
+  nodeE.setPriority(7);
+  static dag::Node<0, TaskF> nodeF{taskF, indexMap["nodeF"]};
+  nodeF.setPriority(9);
+  nodeD.setDependencyAt<0>(nodeE);
+  nodeD.setDependencyAt<1>(nodeF);
 
-  TestNodeFunctorA functorA{{&testCounter, 1UL, 3UL}};
-  TestNodeFunctorB functorB{{&testCounter, 10UL, 1UL}};
-  TestNodeFunctorC functorC{{&testCounter, 1UL, 1UL}};
+  static dag::Node<2, TaskG> nodeG{taskG, indexMap["nodeG"]};
+  taskG.set(0.0);
+  nodeG = {taskG, indexMap["nodeG"]};
+  nodeG.setPriority(4);
+  nodeG.setDependencyAt<0>(nodeA);
+  nodeG.setDependencyAt<1>(nodeD);
 
-  dag::Node nodeA{&functorA, "TestNodeA"};
-  dag::Node nodeB{&functorB, "TestNodeB"};
-  // dag::Node nodeC{&functorC, "TestNodeC"};
-  // nodeC.addDependency<1, int>(&nodeA);
-  // nodeC.addDependency<0, double>(&nodeB);
+  m_nodeList.addNode(&nodeA);
+  m_nodeList.addNode(&nodeB);
+  m_nodeList.addNode(&nodeC);
+  m_nodeList.addNode(&nodeD);
+  m_nodeList.addNode(&nodeE);
+  m_nodeList.addNode(&nodeF);
+  m_nodeList.addNode(&nodeG);
 
-  dag::Dag<2> graph{};
-  graph.addNode(&nodeA);
-  graph.addNode(&nodeB);
-  // graph.addNode(&nodeC);
+  m_nodeList.sortNodes(dag::SortType::DepthOrPriority);
 
   std::atomic<bool> stopFlag{false};
+  threadPool::ThreadPool<numberOfThreads, 10> tPool{};
 
   for (auto _ : state) {
-    core::runGraphParallelNTimes<2, numberOfThreads, 10>(
-        graph, stopFlag, numberOfLoops, shouldWaitForPrevioius, 10);
+    core::runNodeListParallelNTimes(m_nodeList, tPool, stopFlag, numberOfLoops);
   }
-
-  assert(testCounter == 2 * numberOfLoops);
 }
 BENCHMARK(BM_RunParallel)
     ->Unit(benchmark::kMillisecond)
