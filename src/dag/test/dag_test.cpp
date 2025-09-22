@@ -459,3 +459,51 @@ TEST(DagTest, CreateGraphAndGetSortedTasksPerCustomPriority) {
     //           << std::endl;
   }
 }
+
+TEST(DagTest, DetectsCycle) {
+  // Arrange
+  TaskA taskA;
+  TaskB taskB{2};
+  TaskC taskC{3.f};
+  TaskD taskD;
+  TaskE taskE{2, 3};
+  TaskF taskF;
+  TaskG taskG;
+
+  // Act
+  dag::Node<2, TaskA> nodeA{taskA, indexMap["nodeA"]};
+  nodeA.setPriority(10);
+  dag::Node<0, TaskB> nodeB{taskB, indexMap["nodeB"]};
+  nodeB.setPriority(20);
+  dag::Node<0, TaskC> nodeC{taskC, indexMap["nodeC"]};
+  nodeC.setPriority(3);
+  nodeA.setDependencyAt<0>(nodeB);
+
+  dag::Node<2, TaskD> nodeD{taskD, indexMap["nodeD"]};
+  nodeD.setPriority(6);
+  dag::Node<0, TaskE> nodeE{taskE, indexMap["nodeE"]};
+  nodeE.setPriority(7);
+  dag::Node<0, TaskF> nodeF{taskF, indexMap["nodeF"]};
+  nodeF.setPriority(9);
+  nodeD.setDependencyAt<0>(nodeE);
+  nodeD.setDependencyAt<1>(nodeF);
+
+  dag::Node<2, TaskG> nodeG{taskG, indexMap["nodeG"]};
+  nodeG.setPriority(4);
+  nodeG.setDependencyAt<0>(nodeA);
+  nodeG.setDependencyAt<1>(nodeD);
+
+  nodeA.setDependencyAt<1>(nodeG);
+
+  dag::NodeList<7> nodeList;
+  nodeList.addNode(&nodeA);
+  nodeList.addNode(&nodeB);
+  nodeList.addNode(&nodeC);
+  nodeList.addNode(&nodeD);
+  nodeList.addNode(&nodeE);
+  nodeList.addNode(&nodeF);
+  nodeList.addNode(&nodeG);
+
+  // Act & Assert
+  EXPECT_DEATH({ nodeList.sortNodes(); }, ".*");
+}
