@@ -8,7 +8,6 @@
 #include <array>
 #include <cassert>
 #include <functional>
-#include <string>
 #include <tuple>
 #include <type_traits>
 #include <unistd.h>
@@ -19,7 +18,7 @@ namespace dag {
 template <size_t NUM_OF_EDGES, typename FUNCTOR> class Node;
 template <size_t NUM_OF_NODES> class NodeList;
 
-class INode {
+class INode : public threadPool::IThreadTask {
 public:
   virtual ~INode() = default;
 
@@ -30,7 +29,6 @@ public:
   virtual void *getOutputPtr() = 0;
   virtual size_t numberOfDeps() = 0;
   virtual INode *getDepAt(size_t index) = 0;
-  virtual std::string name() = 0;
   virtual void setPriority(size_t prio) = 0;
   virtual size_t getPriority() const = 0;
   virtual void setDepth(size_t depth) = 0;
@@ -49,15 +47,14 @@ private:
   template <size_t N> friend class NodeList;
 };
 
-template <size_t NUM_OF_DEPS, typename FUNCTOR>
-class Node : public INode, public threadPool::IThreadTask {
+template <size_t NUM_OF_DEPS, typename FUNCTOR> class Node : public INode {
 public:
   using Traits = utils::FunctionTraits<FUNCTOR>;
   using Output = typename Traits::ReturnType;
   using Args = typename Traits::ArgsTuple;
   static constexpr size_t argsSize = Traits::ArgsSize;
 
-  Node(FUNCTOR &f, std::string name) : m_functor(f), m_name(name) {
+  Node(FUNCTOR &f, size_t identifer) : m_functor(f), m_identifier(identifer) {
     for (int i = 0; i < NUM_OF_DEPS; i++) {
       m_deps[i] = nullptr;
     }
@@ -101,16 +98,7 @@ public:
   }
 
   // INode functionality
-  bool isDone() const override { return m_done; }
-
-  // INode functionality
-  void setDone() override { m_done = true; }
-
-  // INode functionality
-  void reset() override {
-    m_ready = false;
-    m_done = false;
-  }
+  void reset() override { m_ready = false; }
 
   // INode functionality
   void *getOutputPtr() override { return static_cast<void *>(&m_output); }
@@ -122,20 +110,25 @@ public:
   }
 
   // INode functionality
-  std::string name() override { return m_name; }
-
-  // INode functionality
   size_t numberOfDeps() override { return NUM_OF_DEPS; }
 
   // INode functionality
-  void setPriority(size_t prio) { m_prio = prio; }
+  void setPriority(size_t prio) override { m_prio = prio; }
 
   // INode functionality
-  size_t getPriority() const { return m_prio; }
+  size_t getPriority() const override { return m_prio; }
 
-  void setDepth(size_t depth) { m_depth = depth; }
+  // INode functionality
+  bool isDone() const override { return m_done; }
 
-  size_t getDepth() const { return m_depth; }
+  // INode functionality
+  void setDone() override { m_done = true; }
+
+  // INode functionality
+  void setDepth(size_t depth) override { m_depth = depth; }
+
+  // INode functionality
+  size_t getDepth() const override { return m_depth; }
 
   // IThreadTask functionality
   void run() const override {
@@ -144,10 +137,7 @@ public:
   }
 
   // IThreadTask functionality
-  std::string name() const override { return m_name; }
-
-  // IThreadTask functionality
-  bool shouldSyncWhenDone() const override { return true; }
+  size_t getIdentifier() const override { return m_identifier; }
 
 protected:
   bool isActive() override { return m_active; }
@@ -171,13 +161,14 @@ private:
   mutable FUNCTOR m_functor;
   std::array<INode *, NUM_OF_DEPS> m_deps;
   mutable bool m_ready{false};
-  bool m_done{false};
   mutable Output m_output;
-  std::string m_name;
   bool m_active{false};
   bool m_visited{false};
+  bool m_done{false};
+  bool m_scheduled{false};
   size_t m_depth{0};
   size_t m_prio{0};
+  size_t m_identifier;
 };
 
 enum class SortType {
@@ -203,7 +194,7 @@ public:
     return m_nodes[index];
   }
 
-  size_t getNumberOfNodes() { return m_size; }
+  size_t getNumberOfNodes() const { return m_size; }
 
   void sortNodes(
       SortType sortType = SortType::Topological,

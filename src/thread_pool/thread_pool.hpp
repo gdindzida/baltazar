@@ -18,8 +18,8 @@ namespace threadPool {
 
 template <size_t THREAD_NUM, size_t MAX_QUEUE_SIZE> class ThreadPool {
   std::array<std::thread, THREAD_NUM> m_threads;
-  TaskQueue<MAX_QUEUE_SIZE> m_scheduledTasks;
-  TaskQueue<MAX_QUEUE_SIZE> m_doneTasks;
+  TaskQueue<MAX_QUEUE_SIZE> m_scheduledJobs;
+  TaskQueue<MAX_QUEUE_SIZE> m_doneJobs;
   size_t m_numberOfTasks{0};
   size_t m_numberOfRunningTasks{0};
   std::mutex m_mtx;
@@ -32,18 +32,17 @@ public:
   explicit ThreadPool() {
     for (int i = 0; i < THREAD_NUM; i++) {
       m_threads[i] = std::thread([this, i] {
-        NullThreadTask nullThreadTask{};
-        const IThreadTask *task = &nullThreadTask;
         while (true) {
           std::unique_lock lock(m_mtx);
           m_addTaskCv.wait(
-              lock, [this] { return !m_scheduledTasks.empty() || m_stop; });
+              lock, [this] { return !m_scheduledJobs.empty() || m_stop; });
 
           if (m_stop) {
             break;
           }
 
-          task = m_scheduledTasks.pop();
+          auto job = m_scheduledJobs.pop().value();
+          auto task = job._task;
           m_numberOfRunningTasks++;
           lock.unlock();
 
@@ -53,15 +52,15 @@ public:
                     << "\n";
 
           std::cout << "[Thread" << i << "] "
-                    << "Running a task = " << task->name() << "\n";
+                    << "Running a task = " << task->getIdentifier() << "\n";
 #endif
 
           task->run();
 
           lock.lock();
           m_numberOfRunningTasks--;
-          if (task->shouldSyncWhenDone()) {
-            bool success = m_doneTasks.push(task);
+          if (job._shouldSyncWhenDone) {
+            bool success = m_doneJobs.push(job);
             assert(success);
             lock.unlock();
 
@@ -69,7 +68,8 @@ public:
 
 #ifdef DEBUGLOG
             std::cout << "[Thread" << i << "] "
-                      << "Subbmiting task for sync = " << task->name() << "\n";
+                      << "Subbmiting task for sync = " << task->getIdentifier()
+                      << "\n";
 #endif
           } else {
             m_numberOfTasks--;
@@ -80,8 +80,8 @@ public:
 
 #ifdef DEBUGLOG
             std::cout << "[Thread" << i << "] "
-                      << "Discard task after finishing = " << task->name()
-                      << "\n";
+                      << "Discard task after finishing = "
+                      << task->getIdentifier() << "\n";
 #endif
           }
         }
@@ -99,21 +99,21 @@ public:
     }
   }
 
-  bool tryScheduleTask(IThreadTask *task) {
+  bool tryScheduleTask(ThreadJob job) {
     std::unique_lock lock(m_mtx);
 
     if (m_numberOfTasks >= MAX_QUEUE_SIZE) {
       return false;
     }
 
-    if (!m_scheduledTasks.push(task)) {
+    if (!m_scheduledJobs.push(job)) {
       return false;
     }
 
     m_numberOfTasks++;
 
 #ifdef DEBUGLOG
-    std::cout << "Scheduling task " << task->name() << "\n";
+    std::cout << "Scheduling task " << job._task->getIdentifier() << "\n";
 #endif
 
     lock.unlock();
@@ -122,11 +122,11 @@ public:
     return true;
   }
 
-  bool scheduleTask(IThreadTask *task) {
+  bool scheduleTask(ThreadJob job) {
     std::unique_lock lock(m_mtx);
 
     m_popedTaskCv.wait(lock, [this] {
-      return ((m_numberOfTasks < MAX_QUEUE_SIZE) && !m_scheduledTasks.full()) ||
+      return ((m_numberOfTasks < MAX_QUEUE_SIZE) && !m_scheduledJobs.full()) ||
              m_stop;
     });
 
@@ -135,11 +135,11 @@ public:
     }
 
     m_numberOfTasks++;
-    bool success = m_scheduledTasks.push(task);
+    bool success = m_scheduledJobs.push(job);
     assert(success);
 
 #ifdef DEBUGLOG
-    std::cout << "Scheduling task " << task->name() << "\n";
+    std::cout << "Scheduling task " << job._task->getIdentifier() << "\n";
 #endif
 
     lock.unlock();
@@ -148,57 +148,55 @@ public:
     return true;
   }
 
-  utils::Optional<const IThreadTask *> tryGetNextDoneTask() {
+  utils::Optional<const ThreadJob> tryGetNextDoneTask() {
     std::unique_lock lock(m_mtx);
 
-    if (m_doneTasks.empty()) {
-      return utils::Optional<const IThreadTask *>();
+    if (m_doneJobs.empty()) {
+      return utils::Optional<const ThreadJob>();
     }
 
     m_numberOfTasks--;
-    const IThreadTask *retTask = m_doneTasks.pop();
-    assert(retTask != nullptr);
+    const ThreadJob job = m_doneJobs.pop().value();
+    assert(job._task != nullptr);
 
 #ifdef DEBUGLOG
-    std::cout << "Reporting done task " << retTask->name() << "\n";
+    std::cout << "Reporting done task " << job._task->getIdentifier() << "\n";
 #endif
 
     lock.unlock();
     m_popedTaskCv.notify_one();
 
-    return retTask;
+    return job;
   }
 
-  utils::Optional<const IThreadTask *> getNextDoneTask() {
+  utils::Optional<const ThreadJob> getNextDoneTask() {
     std::unique_lock lock(m_mtx);
 
-    m_finishTaskCv.wait(lock,
-                        [this] { return !m_doneTasks.empty() || m_stop; });
+    m_finishTaskCv.wait(lock, [this] { return !m_doneJobs.empty() || m_stop; });
 
     if (m_stop) {
-      return utils::Optional<const IThreadTask *>();
+      return utils::Optional<const ThreadJob>();
     }
 
     m_numberOfTasks--;
-    const IThreadTask *retTask = m_doneTasks.pop();
-    assert(retTask != nullptr);
+    const ThreadJob job = m_doneJobs.pop().value();
+    assert(job._task != nullptr);
 
 #ifdef DEBUGLOG
-    std::cout << "Reporting done task " << retTask->name() << "\n";
+    std::cout << "Reporting done task " << job._task->getIdentifier() << "\n";
 #endif
 
     lock.unlock();
     m_popedTaskCv.notify_one();
 
-    return retTask;
+    return job;
   }
 
   void waitForAllTasks(std::atomic<bool> &stopFlag) {
     std::unique_lock lock(m_mtx);
     m_finishTaskCv.wait(lock, [this, &stopFlag] {
       m_stop = stopFlag;
-      return (m_numberOfRunningTasks == 0 && m_scheduledTasks.empty()) ||
-             m_stop;
+      return (m_numberOfRunningTasks == 0 && m_scheduledJobs.empty()) || m_stop;
     });
   }
 
@@ -209,7 +207,7 @@ public:
 #ifdef DEBUGLOG
     std::cout << "Shutting down..."
               << "\n";
-    std::cout << "Number of tasks = " << m_scheduledTasks.size() << "\n";
+    std::cout << "Number of tasks = " << m_scheduledJobs.size() << "\n";
 #endif
 
     lock.unlock();

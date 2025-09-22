@@ -71,6 +71,10 @@ public:
 private:
 };
 
+std::map<std::string, size_t> indexMap{
+    {"nodeA", 3},  {"nodeB", 5}, {"nodeC", 2}, {"nodeD", 13},
+    {"nodeE", 15}, {"nodeF", 9}, {"nodeG", 33}};
+
 TEST(DagTest, ConnectFewNodesAndRunThem) {
   // Arrange
   TaskA taskA;
@@ -78,9 +82,9 @@ TEST(DagTest, ConnectFewNodesAndRunThem) {
   TaskC taskC{3.f};
 
   // Act
-  dag::Node<2, TaskA> nodeA{taskA, "nodeA"};
-  dag::Node<0, TaskB> nodeB{taskB, "nodeB"};
-  dag::Node<0, TaskC> nodeC{taskC, "nodeC"};
+  dag::Node<2, TaskA> nodeA{taskA, indexMap["nodeA"]};
+  dag::Node<0, TaskB> nodeB{taskB, indexMap["nodeB"]};
+  dag::Node<0, TaskC> nodeC{taskC, indexMap["nodeC"]};
 
   nodeA.setDependencyAt<0>(nodeB);
   nodeA.setDependencyAt<1>(nodeC);
@@ -105,8 +109,8 @@ TEST(DagTest, ConnectFewNodesAndRunThemButOneDepIsNull) {
   TaskB taskB{2};
 
   // Act & Assert
-  dag::Node<2, TaskA> nodeA{taskA, "nodeA"};
-  dag::Node<0, TaskB> nodeB{taskB, "nodeB"};
+  dag::Node<2, TaskA> nodeA{taskA, indexMap["nodeA"]};
+  dag::Node<0, TaskB> nodeB{taskB, indexMap["nodeB"]};
 
   nodeA.setDependencyAt<0>(nodeB);
 
@@ -122,9 +126,9 @@ TEST(DagTest, ConnectFewNodesAndRunThemButDepIsNotDone) {
   TaskC taskC{3.f};
 
   // Act & Assert
-  dag::Node<2, TaskA> nodeA{taskA, "nodeA"};
-  dag::Node<0, TaskB> nodeB{taskB, "nodeB"};
-  dag::Node<0, TaskC> nodeC{taskC, "nodeC"};
+  dag::Node<2, TaskA> nodeA{taskA, indexMap["nodeA"]};
+  dag::Node<0, TaskB> nodeB{taskB, indexMap["nodeB"]};
+  dag::Node<0, TaskC> nodeC{taskC, indexMap["nodeC"]};
 
   nodeA.setDependencyAt<0>(nodeB);
   nodeA.setDependencyAt<1>(nodeC);
@@ -142,9 +146,9 @@ TEST(DagTest, ConnectFewNodesAndRunThemNonConvertibleTypes) {
   TaskF taskF;
 
   // Act
-  dag::Node<2, TaskD> nodeD{taskD, "nodeD"};
-  dag::Node<0, TaskE> nodeE{taskE, "nodeE"};
-  dag::Node<0, TaskF> nodeF{taskF, "nodeF"};
+  dag::Node<2, TaskD> nodeD{taskD, indexMap["nodeD"]};
+  dag::Node<0, TaskE> nodeE{taskE, indexMap["nodeE"]};
+  dag::Node<0, TaskF> nodeF{taskF, indexMap["nodeF"]};
 
   nodeD.setDependencyAt<0>(nodeE);
   nodeD.setDependencyAt<1>(nodeF);
@@ -169,8 +173,10 @@ TEST(DagTest, ConnectFewNodesAndRunThemNonConvertibleTypes) {
 
 TEST(DagTest, CreateGraphAndGetSortedTasks) {
   // Arrange
-  const std::array<std::string, 7> names{"nodeB", "nodeC", "nodeA", "nodeE",
-                                         "nodeF", "nodeD", "nodeG"};
+  const std::array<size_t, 7> names{indexMap["nodeB"], indexMap["nodeC"],
+                                    indexMap["nodeA"], indexMap["nodeE"],
+                                    indexMap["nodeF"], indexMap["nodeD"],
+                                    indexMap["nodeG"]};
   TaskA taskA;
   TaskB taskB{2};
   TaskC taskC{3.f};
@@ -180,19 +186,19 @@ TEST(DagTest, CreateGraphAndGetSortedTasks) {
   TaskG taskG;
 
   // Act
-  dag::Node<2, TaskA> nodeA{taskA, "nodeA"};
-  dag::Node<0, TaskB> nodeB{taskB, "nodeB"};
-  dag::Node<0, TaskC> nodeC{taskC, "nodeC"};
+  dag::Node<2, TaskA> nodeA{taskA, indexMap["nodeA"]};
+  dag::Node<0, TaskB> nodeB{taskB, indexMap["nodeB"]};
+  dag::Node<0, TaskC> nodeC{taskC, indexMap["nodeC"]};
   nodeA.setDependencyAt<0>(nodeB);
   nodeA.setDependencyAt<1>(nodeC);
 
-  dag::Node<2, TaskD> nodeD{taskD, "nodeD"};
-  dag::Node<0, TaskE> nodeE{taskE, "nodeE"};
-  dag::Node<0, TaskF> nodeF{taskF, "nodeF"};
+  dag::Node<2, TaskD> nodeD{taskD, indexMap["nodeD"]};
+  dag::Node<0, TaskE> nodeE{taskE, indexMap["nodeE"]};
+  dag::Node<0, TaskF> nodeF{taskF, indexMap["nodeF"]};
   nodeD.setDependencyAt<0>(nodeE);
   nodeD.setDependencyAt<1>(nodeF);
 
-  dag::Node<2, TaskG> nodeG{taskG, "nodeG"};
+  dag::Node<2, TaskG> nodeG{taskG, indexMap["nodeG"]};
   nodeG.setDependencyAt<0>(nodeA);
   nodeG.setDependencyAt<1>(nodeD);
 
@@ -211,7 +217,7 @@ TEST(DagTest, CreateGraphAndGetSortedTasks) {
   // Assert
   for (int i = 0; i < nodeList.getNumberOfNodes(); ++i) {
     auto node = nodeList.getNodeAt(i);
-    EXPECT_EQ(names[i], nodeList.getNodeAt(i)->name());
+    EXPECT_EQ(names[i], nodeList.getNodeAt(i)->getIdentifier());
     // std::cout << nodeList.getNodeAt(i)->name() << "->"
     //           << nodeList.getNodeAt(i)->getDepth() << std::endl;
   }
@@ -219,8 +225,10 @@ TEST(DagTest, CreateGraphAndGetSortedTasks) {
 
 TEST(DagTest, CreateGraphAndGetSortedTasksPerDepth) {
   // Arrange
-  const std::array<std::string, 7> names{"nodeB", "nodeC", "nodeE", "nodeF",
-                                         "nodeA", "nodeD", "nodeG"};
+  const std::array<size_t, 7> names{indexMap["nodeB"], indexMap["nodeC"],
+                                    indexMap["nodeE"], indexMap["nodeF"],
+                                    indexMap["nodeA"], indexMap["nodeD"],
+                                    indexMap["nodeG"]};
   TaskA taskA;
   TaskB taskB{2};
   TaskC taskC{3.f};
@@ -230,19 +238,19 @@ TEST(DagTest, CreateGraphAndGetSortedTasksPerDepth) {
   TaskG taskG;
 
   // Act
-  dag::Node<2, TaskA> nodeA{taskA, "nodeA"};
-  dag::Node<0, TaskB> nodeB{taskB, "nodeB"};
-  dag::Node<0, TaskC> nodeC{taskC, "nodeC"};
+  dag::Node<2, TaskA> nodeA{taskA, indexMap["nodeA"]};
+  dag::Node<0, TaskB> nodeB{taskB, indexMap["nodeB"]};
+  dag::Node<0, TaskC> nodeC{taskC, indexMap["nodeC"]};
   nodeA.setDependencyAt<0>(nodeB);
   nodeA.setDependencyAt<1>(nodeC);
 
-  dag::Node<2, TaskD> nodeD{taskD, "nodeD"};
-  dag::Node<0, TaskE> nodeE{taskE, "nodeE"};
-  dag::Node<0, TaskF> nodeF{taskF, "nodeF"};
+  dag::Node<2, TaskD> nodeD{taskD, indexMap["nodeD"]};
+  dag::Node<0, TaskE> nodeE{taskE, indexMap["nodeE"]};
+  dag::Node<0, TaskF> nodeF{taskF, indexMap["nodeF"]};
   nodeD.setDependencyAt<0>(nodeE);
   nodeD.setDependencyAt<1>(nodeF);
 
-  dag::Node<2, TaskG> nodeG{taskG, "nodeG"};
+  dag::Node<2, TaskG> nodeG{taskG, indexMap["nodeG"]};
   nodeG.setDependencyAt<0>(nodeA);
   nodeG.setDependencyAt<1>(nodeD);
 
@@ -261,7 +269,7 @@ TEST(DagTest, CreateGraphAndGetSortedTasksPerDepth) {
   // Assert
   for (int i = 0; i < nodeList.getNumberOfNodes(); ++i) {
     auto node = nodeList.getNodeAt(i);
-    EXPECT_EQ(names[i], nodeList.getNodeAt(i)->name());
+    EXPECT_EQ(names[i], nodeList.getNodeAt(i)->getIdentifier());
     // std::cout << nodeList.getNodeAt(i)->name() << "->"
     //           << nodeList.getNodeAt(i)->getDepth() << std::endl;
   }
@@ -269,8 +277,10 @@ TEST(DagTest, CreateGraphAndGetSortedTasksPerDepth) {
 
 TEST(DagTest, CreateGraphAndGetSortedTasksPerPriority) {
   // Arrange
-  const std::array<std::string, 7> names{"nodeF", "nodeE", "nodeD", "nodeG",
-                                         "nodeC", "nodeB", "nodeA"};
+  const std::array<size_t, 7> names{indexMap["nodeF"], indexMap["nodeE"],
+                                    indexMap["nodeD"], indexMap["nodeG"],
+                                    indexMap["nodeC"], indexMap["nodeB"],
+                                    indexMap["nodeA"]};
   TaskA taskA;
   TaskB taskB{2};
   TaskC taskC{3.f};
@@ -280,25 +290,25 @@ TEST(DagTest, CreateGraphAndGetSortedTasksPerPriority) {
   TaskG taskG;
 
   // Act
-  dag::Node<2, TaskA> nodeA{taskA, "nodeA"};
+  dag::Node<2, TaskA> nodeA{taskA, indexMap["nodeA"]};
   nodeA.setPriority(1);
-  dag::Node<0, TaskB> nodeB{taskB, "nodeB"};
+  dag::Node<0, TaskB> nodeB{taskB, indexMap["nodeB"]};
   nodeB.setPriority(2);
-  dag::Node<0, TaskC> nodeC{taskC, "nodeC"};
+  dag::Node<0, TaskC> nodeC{taskC, indexMap["nodeC"]};
   nodeC.setPriority(3);
   nodeA.setDependencyAt<0>(nodeB);
   nodeA.setDependencyAt<1>(nodeC);
 
-  dag::Node<2, TaskD> nodeD{taskD, "nodeD"};
+  dag::Node<2, TaskD> nodeD{taskD, indexMap["nodeD"]};
   nodeD.setPriority(6);
-  dag::Node<0, TaskE> nodeE{taskE, "nodeE"};
+  dag::Node<0, TaskE> nodeE{taskE, indexMap["nodeE"]};
   nodeE.setPriority(7);
-  dag::Node<0, TaskF> nodeF{taskF, "nodeF"};
+  dag::Node<0, TaskF> nodeF{taskF, indexMap["nodeF"]};
   nodeF.setPriority(9);
   nodeD.setDependencyAt<0>(nodeE);
   nodeD.setDependencyAt<1>(nodeF);
 
-  dag::Node<2, TaskG> nodeG{taskG, "nodeG"};
+  dag::Node<2, TaskG> nodeG{taskG, indexMap["nodeG"]};
   nodeG.setPriority(4);
   nodeG.setDependencyAt<0>(nodeA);
   nodeG.setDependencyAt<1>(nodeD);
@@ -318,7 +328,7 @@ TEST(DagTest, CreateGraphAndGetSortedTasksPerPriority) {
   // Assert
   for (int i = 0; i < nodeList.getNumberOfNodes(); ++i) {
     auto node = nodeList.getNodeAt(i);
-    EXPECT_EQ(names[i], nodeList.getNodeAt(i)->name());
+    EXPECT_EQ(names[i], nodeList.getNodeAt(i)->getIdentifier());
     // std::cout << nodeList.getNodeAt(i)->name() << "->"
     //           << nodeList.getNodeAt(i)->getPriority() << std::endl;
   }
@@ -326,8 +336,10 @@ TEST(DagTest, CreateGraphAndGetSortedTasksPerPriority) {
 
 TEST(DagTest, CreateGraphAndGetSortedTasksPerDepthOrPriority) {
   // Arrange
-  const std::array<std::string, 7> names{"nodeB", "nodeF", "nodeE", "nodeC",
-                                         "nodeA", "nodeD", "nodeG"};
+  const std::array<size_t, 7> names{indexMap["nodeB"], indexMap["nodeF"],
+                                    indexMap["nodeE"], indexMap["nodeC"],
+                                    indexMap["nodeA"], indexMap["nodeD"],
+                                    indexMap["nodeG"]};
   TaskA taskA;
   TaskB taskB{2};
   TaskC taskC{3.f};
@@ -337,25 +349,25 @@ TEST(DagTest, CreateGraphAndGetSortedTasksPerDepthOrPriority) {
   TaskG taskG;
 
   // Act
-  dag::Node<2, TaskA> nodeA{taskA, "nodeA"};
+  dag::Node<2, TaskA> nodeA{taskA, indexMap["nodeA"]};
   nodeA.setPriority(10);
-  dag::Node<0, TaskB> nodeB{taskB, "nodeB"};
+  dag::Node<0, TaskB> nodeB{taskB, indexMap["nodeB"]};
   nodeB.setPriority(20);
-  dag::Node<0, TaskC> nodeC{taskC, "nodeC"};
+  dag::Node<0, TaskC> nodeC{taskC, indexMap["nodeC"]};
   nodeC.setPriority(3);
   nodeA.setDependencyAt<0>(nodeB);
   nodeA.setDependencyAt<1>(nodeC);
 
-  dag::Node<2, TaskD> nodeD{taskD, "nodeD"};
+  dag::Node<2, TaskD> nodeD{taskD, indexMap["nodeD"]};
   nodeD.setPriority(6);
-  dag::Node<0, TaskE> nodeE{taskE, "nodeE"};
+  dag::Node<0, TaskE> nodeE{taskE, indexMap["nodeE"]};
   nodeE.setPriority(7);
-  dag::Node<0, TaskF> nodeF{taskF, "nodeF"};
+  dag::Node<0, TaskF> nodeF{taskF, indexMap["nodeF"]};
   nodeF.setPriority(9);
   nodeD.setDependencyAt<0>(nodeE);
   nodeD.setDependencyAt<1>(nodeF);
 
-  dag::Node<2, TaskG> nodeG{taskG, "nodeG"};
+  dag::Node<2, TaskG> nodeG{taskG, indexMap["nodeG"]};
   nodeG.setPriority(4);
   nodeG.setDependencyAt<0>(nodeA);
   nodeG.setDependencyAt<1>(nodeD);
@@ -375,7 +387,7 @@ TEST(DagTest, CreateGraphAndGetSortedTasksPerDepthOrPriority) {
   // Assert
   for (int i = 0; i < nodeList.getNumberOfNodes(); ++i) {
     auto node = nodeList.getNodeAt(i);
-    EXPECT_EQ(names[i], nodeList.getNodeAt(i)->name());
+    EXPECT_EQ(names[i], nodeList.getNodeAt(i)->getIdentifier());
     // std::cout << nodeList.getNodeAt(i)->name() << "->"
     //           << nodeList.getNodeAt(i)->getDepth() << ", "
     //           << nodeList.getNodeAt(i)->getPriority() << std::endl;
@@ -384,8 +396,10 @@ TEST(DagTest, CreateGraphAndGetSortedTasksPerDepthOrPriority) {
 
 TEST(DagTest, CreateGraphAndGetSortedTasksPerCustomPriority) {
   // Arrange
-  const std::array<std::string, 7> names{"nodeC", "nodeG", "nodeD", "nodeE",
-                                         "nodeF", "nodeA", "nodeB"};
+  const std::array<size_t, 7> names{indexMap["nodeC"], indexMap["nodeG"],
+                                    indexMap["nodeD"], indexMap["nodeE"],
+                                    indexMap["nodeF"], indexMap["nodeA"],
+                                    indexMap["nodeB"]};
   TaskA taskA;
   TaskB taskB{2};
   TaskC taskC{3.f};
@@ -395,25 +409,25 @@ TEST(DagTest, CreateGraphAndGetSortedTasksPerCustomPriority) {
   TaskG taskG;
 
   // Act
-  dag::Node<2, TaskA> nodeA{taskA, "nodeA"};
+  dag::Node<2, TaskA> nodeA{taskA, indexMap["nodeA"]};
   nodeA.setPriority(10);
-  dag::Node<0, TaskB> nodeB{taskB, "nodeB"};
+  dag::Node<0, TaskB> nodeB{taskB, indexMap["nodeB"]};
   nodeB.setPriority(20);
-  dag::Node<0, TaskC> nodeC{taskC, "nodeC"};
+  dag::Node<0, TaskC> nodeC{taskC, indexMap["nodeC"]};
   nodeC.setPriority(3);
   nodeA.setDependencyAt<0>(nodeB);
   nodeA.setDependencyAt<1>(nodeC);
 
-  dag::Node<2, TaskD> nodeD{taskD, "nodeD"};
+  dag::Node<2, TaskD> nodeD{taskD, indexMap["nodeD"]};
   nodeD.setPriority(6);
-  dag::Node<0, TaskE> nodeE{taskE, "nodeE"};
+  dag::Node<0, TaskE> nodeE{taskE, indexMap["nodeE"]};
   nodeE.setPriority(7);
-  dag::Node<0, TaskF> nodeF{taskF, "nodeF"};
+  dag::Node<0, TaskF> nodeF{taskF, indexMap["nodeF"]};
   nodeF.setPriority(9);
   nodeD.setDependencyAt<0>(nodeE);
   nodeD.setDependencyAt<1>(nodeF);
 
-  dag::Node<2, TaskG> nodeG{taskG, "nodeG"};
+  dag::Node<2, TaskG> nodeG{taskG, indexMap["nodeG"]};
   nodeG.setPriority(4);
   nodeG.setDependencyAt<0>(nodeA);
   nodeG.setDependencyAt<1>(nodeD);
@@ -436,7 +450,7 @@ TEST(DagTest, CreateGraphAndGetSortedTasksPerCustomPriority) {
   // Assert
   for (int i = 0; i < nodeList.getNumberOfNodes(); ++i) {
     auto node = nodeList.getNodeAt(i);
-    EXPECT_EQ(names[i], nodeList.getNodeAt(i)->name());
+    EXPECT_EQ(names[i], nodeList.getNodeAt(i)->getIdentifier());
     // std::cout << nodeList.getNodeAt(i)->name() << "->"
     //           << nodeList.getNodeAt(i)->getDepth() << ", "
     //           << nodeList.getNodeAt(i)->getPriority() << " = "

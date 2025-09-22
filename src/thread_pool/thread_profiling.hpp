@@ -3,14 +3,13 @@
 #define THREAD_PROFILING_HPP
 #include "thread_task.hpp"
 #include <chrono>
-#include <string>
 
 namespace threadPool {
 
 class ThreadProfilingTaskWrapper final : public IThreadTask {
 public:
   // NOLINTNEXTLINE
-  ThreadProfilingTaskWrapper(IThreadTask *wrappedTask)
+  ThreadProfilingTaskWrapper(IThreadTask *wrappedTask, size_t identifier)
       : m_wrappedTask(wrappedTask) {
     m_scheduledTimePoint = std::chrono::steady_clock::now();
   }
@@ -21,11 +20,6 @@ public:
     m_startedTimePoint = std::chrono::steady_clock::now();
     m_wrappedTask->run();
     m_endedTimePoint = std::chrono::steady_clock::now();
-  }
-  std::string name() const override { return m_wrappedTask->name(); }
-
-  bool shouldSyncWhenDone() const override {
-    return m_wrappedTask->shouldSyncWhenDone();
   }
 
   std::chrono::steady_clock::time_point getScheduledTimePoint() {
@@ -40,11 +34,14 @@ public:
     return m_endedTimePoint;
   }
 
+  size_t getIdentifier() const override { return m_identifier; }
+
 private:
   IThreadTask *m_wrappedTask;
   std::chrono::steady_clock::time_point m_scheduledTimePoint;
   mutable std::chrono::steady_clock::time_point m_startedTimePoint;
   mutable std::chrono::steady_clock::time_point m_endedTimePoint;
+  size_t m_identifier;
 };
 
 } // namespace threadPool

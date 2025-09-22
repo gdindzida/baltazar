@@ -1,257 +1,235 @@
 #include "../core.hpp"
 
-#include <future>
+#include <atomic>
 #include <gtest/gtest.h>
+#include <thread>
 
-struct HelperStruct {
-  std::atomic<size_t> *_counter;
-  size_t _milliseconds;
+class TaskA {
+public:
+  double operator()(int a, float b) {
+    return static_cast<double>(a) + static_cast<double>(b);
+  }
 };
 
-static void helperTaskFunction(const HelperStruct &context) {
-  context._counter->fetch_add(1UL);
-  std::this_thread::sleep_for(std::chrono::milliseconds(context._milliseconds));
-}
-
-class TestNodeFunctorA final : public dag::INodeFunctor<int> {
+class TaskB {
 public:
-  static constexpr int _result = 1111;
+  TaskB(int a) : m_a(a) {}
 
-  explicit TestNodeFunctorA(const HelperStruct &ctx) : m_context(ctx) {}
-
-  int run() override {
-    std::cout << "Running task A" << std::endl;
-    helperTaskFunction(m_context);
-    return _result;
-  }
+  int operator()() { return m_a; }
 
 private:
-  HelperStruct m_context;
+  int m_a;
 };
 
-class TestNodeFunctorB final : public dag::INodeFunctor<double, int> {
+class TaskC {
 public:
-  static constexpr double _result = 123.5;
+  TaskC(float a) : m_a(a) {}
 
-  explicit TestNodeFunctorB(const HelperStruct &ctx) : m_context(ctx) {}
-
-  double run(int i) override {
-    std::cout << "Running task B" << std::endl;
-    helperTaskFunction(m_context);
-    return _result;
-  }
+  float operator()() { return m_a; }
 
 private:
-  HelperStruct m_context;
+  float m_a;
 };
 
-class TestNodeFunctorC final : public dag::INodeFunctor<float, double, int> {
-public:
-  explicit TestNodeFunctorC(const HelperStruct &ctx) : m_context(ctx) {}
+struct MyDataType {
+  int someNum;
+  int someOtherNum;
+};
 
-  float run(const double d, const int i) override {
-    std::cout << "Running task C" << std::endl;
-    helperTaskFunction(m_context);
-    return static_cast<float>(d) + static_cast<float>(i);
+class TaskD {
+public:
+  std::array<int, 2> operator()(MyDataType a, std::string s) {
+    assert(s == "mystring");
+    return {a.someNum, a.someOtherNum};
   }
+};
+
+class TaskE {
+public:
+  TaskE(int a, int b) : m_a(a), m_b(b) {}
+
+  MyDataType operator()() { return {m_a, m_b}; }
 
 private:
-  HelperStruct m_context;
+  int m_a;
+  int m_b;
 };
 
-TEST(CoreTest, VerifyNodeDependencySynchronisation) {
+class TaskF {
+public:
+  std::string operator()() { return "mystring"; }
+};
+
+class TaskG {
+public:
+  double operator()(double a, std::array<int, 2> b) {
+    m_sum += a + static_cast<double>(b[0] + b[1]);
+    return m_sum;
+  }
+
+  void set(double value) { m_sum = value; }
+
+private:
+  double m_sum{0.0};
+};
+
+class CoreTest : public ::testing::Test {
+
+protected:
+  void SetUp() override { arrangeTest(); }
+
+  void TearDown() override {}
+
+  dag::NodeList<7> &getNodes() { return m_nodeList; }
+
+  std::array<size_t, 7> &getNames() { return m_names; }
+
+  void arrangeTest() {
+    const std::array<size_t, 7> m_names{
+        m_indexMap["nodeB"], m_indexMap["nodeF"], m_indexMap["nodeE"],
+        m_indexMap["nodeC"], m_indexMap["nodeA"], m_indexMap["nodeD"],
+        m_indexMap["nodeG"]};
+
+    static dag::Node<2, TaskA> nodeA{m_taskA, m_indexMap["nodeA"]};
+    nodeA.setPriority(10);
+    static dag::Node<0, TaskB> nodeB{m_taskB, m_indexMap["nodeB"]};
+    nodeB.setPriority(20);
+    static dag::Node<0, TaskC> nodeC{m_taskC, m_indexMap["nodeC"]};
+    nodeC.setPriority(3);
+    nodeA.setDependencyAt<0>(nodeB);
+    nodeA.setDependencyAt<1>(nodeC);
+
+    static dag::Node<2, TaskD> nodeD{m_taskD, m_indexMap["nodeD"]};
+    nodeD.setPriority(6);
+    static dag::Node<0, TaskE> nodeE{m_taskE, m_indexMap["nodeE"]};
+    nodeE.setPriority(7);
+    static dag::Node<0, TaskF> nodeF{m_taskF, m_indexMap["nodeF"]};
+    nodeF.setPriority(9);
+    nodeD.setDependencyAt<0>(nodeE);
+    nodeD.setDependencyAt<1>(nodeF);
+
+    static dag::Node<2, TaskG> nodeG{m_taskG, m_indexMap["nodeG"]};
+    m_taskG.set(0.0);
+    nodeG = {m_taskG, m_indexMap["nodeG"]};
+    nodeG.setPriority(4);
+    nodeG.setDependencyAt<0>(nodeA);
+    nodeG.setDependencyAt<1>(nodeD);
+
+    m_nodeList.addNode(&nodeA);
+    m_nodeList.addNode(&nodeB);
+    m_nodeList.addNode(&nodeC);
+    m_nodeList.addNode(&nodeD);
+    m_nodeList.addNode(&nodeE);
+    m_nodeList.addNode(&nodeF);
+    m_nodeList.addNode(&nodeG);
+
+    m_nodeList.sortNodes(dag::SortType::DepthOrPriority);
+  }
+
+  std::map<std::string, size_t> m_indexMap{
+      {"nodeA", 1}, {"nodeB", 2}, {"nodeC", 3}, {"nodeD", 4},
+      {"nodeE", 5}, {"nodeF", 6}, {"nodeG", 7}};
+  dag::NodeList<7> m_nodeList{};
+  std::array<size_t, 7> m_names{};
+  TaskA m_taskA;
+  TaskB m_taskB{2};
+  TaskC m_taskC{3.f};
+  TaskD m_taskD;
+  TaskE m_taskE{2, 6};
+  TaskF m_taskF;
+  TaskG m_taskG;
+};
+
+TEST_F(CoreTest, RunSerialOnce) {
   // Arrange
-  constexpr size_t numThreads = 2;
-  std::atomic<size_t> testCounter{0};
-
-  TestNodeFunctorA functorA{{&testCounter, 1UL}};
-  TestNodeFunctorB functorB{{&testCounter, 10UL}};
-  TestNodeFunctorC functorC{{&testCounter, 1UL}};
-
-  dag::Node nodeA{&functorA, "TestNodeA"};
-  dag::Node nodeB{&functorB, "TestNodeB"};
-  nodeB.addDependency<0, int>(&nodeA);
-  dag::Node nodeC{&functorC, "TestNodeC"};
-  nodeC.addDependency<1, int>(&nodeA);
-  nodeC.addDependency<0, double>(&nodeB);
-
-  dag::Dag<3> graph{};
-  graph.addNode(&nodeA);
-  graph.addNode(&nodeB);
-  graph.addNode(&nodeC);
+  std::atomic<bool> stopFlag;
 
   // Act
-  std::atomic<bool> shouldStop{false};
-  core::runGraphParallelOnce<3, numThreads, 10>(graph, shouldStop);
+  core::runNodeListSerialOnce(this->getNodes(), stopFlag);
+
+  double retValue =
+      *static_cast<double *>(this->getNodes().getNodeAt(6)->getOutputPtr());
 
   // Assert
-  EXPECT_EQ(testCounter, 3);
-
-  const float *const outputC = nodeC.getOutput();
-  EXPECT_EQ(*outputC, 1234.5);
+  EXPECT_EQ(retValue, 13.0);
 }
 
-TEST(CoreTest, VerifyNodeDependencySynchronisationNTimesAndWaitForPrevious) {
+TEST_F(CoreTest, RunSerialNTimes) {
   // Arrange
-  constexpr size_t numberOfIterations = 100;
-  constexpr bool shouldWaitForPrevious = true;
-  constexpr size_t numThreads = 2;
-  std::atomic<size_t> testCounter{0};
-
-  TestNodeFunctorA functorA{{&testCounter, 1UL}};
-  TestNodeFunctorB functorB{{&testCounter, 1UL}};
-  TestNodeFunctorC functorC{{&testCounter, 1UL}};
-
-  dag::Node nodeA{&functorA, "TestNodeA"};
-  dag::Node nodeB{&functorB, "TestNodeB"};
-  nodeB.addDependency<0, int>(&nodeA);
-  dag::Node nodeC{&functorC, "TestNodeC"};
-  nodeC.addDependency<1, int>(&nodeA);
-  nodeC.addDependency<0, double>(&nodeB);
-
-  dag::Dag<3> graph{};
-  graph.addNode(&nodeA);
-  graph.addNode(&nodeB);
-  graph.addNode(&nodeC);
+  std::atomic<bool> stopFlag;
+  constexpr size_t n = 16;
 
   // Act
-  std::atomic<bool> shouldStop{false};
-  core::runGraphParallelNTimes<3, numThreads, 10>(
-      graph, shouldStop, numberOfIterations, shouldWaitForPrevious, 1);
+  core::runNodeListSerialNTimes(this->getNodes(), stopFlag, n);
+
+  double retValue =
+      *static_cast<double *>(this->getNodes().getNodeAt(6)->getOutputPtr());
 
   // Assert
-  EXPECT_EQ(testCounter, 3 * numberOfIterations);
-
-  const float *const outputC = nodeC.getOutput();
-  EXPECT_EQ(*outputC, 1234.5);
+  EXPECT_EQ(retValue, n * 13.0);
 }
 
-TEST(CoreTest,
-     VerifyNodeDependencySynchronisationNTimesAndDontWaitForPrevious) {
+TEST_F(CoreTest, RunSrialeInALoop) {
   // Arrange
-  constexpr size_t numberOfIterations = 100;
-  constexpr bool shouldWaitForPrevious = false;
-  constexpr size_t numThreads = 2;
-  std::atomic<size_t> testCounter{0};
-
-  TestNodeFunctorA functorA{{&testCounter, 1UL}};
-  TestNodeFunctorB functorB{{&testCounter, 1UL}};
-  TestNodeFunctorC functorC{{&testCounter, 1UL}};
-
-  dag::Node nodeA{&functorA, "TestNodeA"};
-  dag::Node nodeB{&functorB, "TestNodeB"};
-  nodeB.addDependency<0, int>(&nodeA);
-  dag::Node nodeC{&functorC, "TestNodeC"};
-  nodeC.addDependency<1, int>(&nodeA);
-  nodeC.addDependency<0, double>(&nodeB);
-
-  dag::Dag<3> graph{};
-  graph.addNode(&nodeA);
-  graph.addNode(&nodeB);
-  graph.addNode(&nodeC);
+  std::atomic<bool> stopFlag{false};
 
   // Act
-  std::atomic<bool> shouldStop{false};
-  core::runGraphParallelNTimes<3, numThreads, 10>(
-      graph, shouldStop, numberOfIterations, shouldWaitForPrevious, 10);
+  std::thread t(core::runNodeListSerialLoop<7>, std::ref(this->getNodes()),
+                std::ref(stopFlag));
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(2));
+  stopFlag = true;
 
   // Assert
-  EXPECT_EQ(testCounter, 3 * numberOfIterations);
-
-  const float *const outputC = nodeC.getOutput();
-  EXPECT_EQ(*outputC, 1234.5);
+  t.join();
+  EXPECT_TRUE(true);
 }
 
-TEST(
-    CoreTest,
-    RunParallelLoopAndWaitForPreviousIterationAndStopItToVerifyReasonableNumberOfTasksDone) {
+TEST_F(CoreTest, RunParallelOnce) {
   // Arrange
-  constexpr bool shouldWaitForPrevious = true;
-  constexpr size_t numThreads = 2;
-  std::atomic<size_t> testCounter{0};
-
-  TestNodeFunctorA functorA{{&testCounter, 1UL}};
-  TestNodeFunctorB functorB{{&testCounter, 1UL}};
-  TestNodeFunctorC functorC{{&testCounter, 1UL}};
-
-  dag::Node nodeA{&functorA, "TestNodeA"};
-  dag::Node nodeB{&functorB, "TestNodeB"};
-  nodeB.addDependency<0, int>(&nodeA);
-  dag::Node nodeC{&functorC, "TestNodeC"};
-  nodeC.addDependency<1, int>(&nodeA);
-  nodeC.addDependency<0, double>(&nodeB);
-
-  dag::Dag<3> graph{};
-  graph.addNode(&nodeA);
-  graph.addNode(&nodeB);
-  graph.addNode(&nodeC);
+  std::atomic<bool> stopFlag;
+  threadPool::ThreadPool<2, 10> tPoll{};
 
   // Act
-  std::atomic<bool> shouldStop{false};
+  core::runNodeListParallelOnce(this->getNodes(), tPoll, stopFlag);
 
-  std::future<void> ftr = std::async(
-      std::launch::async,
-      [](const size_t millis, std::atomic<bool> &stop) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(millis));
-        stop.store(true);
-      },
-      15UL, std::ref(shouldStop));
-
-  core::runGraphParallelLoop<3, numThreads, 10>(graph, shouldStop,
-                                                shouldWaitForPrevious, 10);
-
-  ftr.wait();
+  double retValue =
+      *static_cast<double *>(this->getNodes().getNodeAt(6)->getOutputPtr());
 
   // Assert
-  EXPECT_GE(testCounter, 20);
-
-  const float *const outputC = nodeC.getOutput();
-  EXPECT_EQ(*outputC, 1234.5);
+  EXPECT_EQ(retValue, 13.0);
 }
 
-TEST(
-    CoreTest,
-    RunParallelLoopAndDontWaitForPreviousIterationAndStopItToVerifyReasonableNumberOfTasksDone) {
+TEST_F(CoreTest, RunParallelNTimes) {
   // Arrange
-  constexpr bool shouldWaitForPrevious = false;
-  constexpr size_t numThreads = 2;
-  std::atomic<size_t> testCounter{0};
-
-  TestNodeFunctorA functorA{{&testCounter, 1UL}};
-  TestNodeFunctorB functorB{{&testCounter, 1UL}};
-  TestNodeFunctorC functorC{{&testCounter, 1UL}};
-
-  dag::Node nodeA{&functorA, "TestNodeA"};
-  dag::Node nodeB{&functorB, "TestNodeB"};
-  nodeB.addDependency<0, int>(&nodeA);
-  dag::Node nodeC{&functorC, "TestNodeC"};
-  nodeC.addDependency<1, int>(&nodeA);
-  nodeC.addDependency<0, double>(&nodeB);
-
-  dag::Dag<3> graph{};
-  graph.addNode(&nodeA);
-  graph.addNode(&nodeB);
-  graph.addNode(&nodeC);
+  std::atomic<bool> stopFlag;
+  constexpr size_t n = 16;
+  threadPool::ThreadPool<2, 10> tPoll{};
 
   // Act
-  std::atomic<bool> shouldStop{false};
+  core::runNodeListParallelNTimes(this->getNodes(), tPoll, stopFlag, n);
 
-  std::future<void> ftr = std::async(
-      std::launch::async,
-      [](const size_t millis, std::atomic<bool> &stop) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(millis));
-        stop.store(true);
-      },
-      15UL, std::ref(shouldStop));
-
-  core::runGraphParallelLoop<3, 2, 10>(graph, shouldStop, shouldWaitForPrevious,
-                                       10);
-
-  ftr.wait();
+  double retValue =
+      *static_cast<double *>(this->getNodes().getNodeAt(6)->getOutputPtr());
 
   // Assert
-  EXPECT_GE(testCounter, 20);
+  EXPECT_EQ(retValue, n * 13.0);
+}
 
-  const float *const outputC = nodeC.getOutput();
-  EXPECT_EQ(*outputC, 1234.5);
+TEST_F(CoreTest, RunParallelInALoop) {
+  // Arrange
+  std::atomic<bool> stopFlag{false};
+  threadPool::ThreadPool<2, 10> tPoll{};
+
+  // Act
+  std::thread t(core::runNodeListParallelLoop<7, 2, 10>,
+                std::ref(this->getNodes()), std::ref(tPoll),
+                std::ref(stopFlag));
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(2));
+  stopFlag = true;
+
+  // Assert
+  t.join();
+  EXPECT_TRUE(true);
 }

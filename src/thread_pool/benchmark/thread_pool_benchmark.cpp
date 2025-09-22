@@ -30,14 +30,14 @@ int waitRandom(const int baseMs, const int jitterMs) {
 
 class TestThreadTask final : public threadPool::IThreadTask {
 public:
-  explicit TestThreadTask(void *ctx) : m_context(ctx){};
+  explicit TestThreadTask(void *ctx, size_t identifier)
+      : m_context(ctx), m_identifier(identifier){};
 
   // NOLINTNEXTLINE
   ~TestThreadTask() override{};
 
   void run() const override { helperTaskFunction(m_context); }
-  std::string name() const override { return "TestThreadTask"; }
-  bool shouldSyncWhenDone() const override { return false; }
+  size_t getIdentifier() const override { return m_identifier; }
 
 private:
   static void helperTaskFunction(void *context) {
@@ -50,6 +50,7 @@ private:
   }
 
   void *m_context;
+  size_t m_identifier;
 };
 
 // NOLINTNEXTLINE
@@ -77,10 +78,10 @@ static void BM_RunParallel(benchmark::State &state) {
 
   auto myFunc = [&tpool] {
     BenchmarkData data{baseMilliseconds, jitterMilliseconds};
-    TestThreadTask task{&data};
+    TestThreadTask task{&data, 13};
 
     for (int i = 0; i < numberOfTasks; i++) {
-      tpool.scheduleTask(&task);
+      tpool.scheduleTask({&task, 0, false});
     }
     std::atomic stop{false};
     tpool.waitForAllTasks(stop);

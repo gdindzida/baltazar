@@ -2,17 +2,20 @@
 #define CORE_H
 #include "../dag/dag.hpp"
 #include "../thread_pool/thread_pool.hpp"
+#include <array>
 #include <atomic>
+#include <ostream>
 
 namespace core {
 
 template <size_t NUM_OF_NODES>
-void runNodeListSerialOnce(dag::NodeList<NUM_OF_NODES> nodes,
+void runNodeListSerialOnce(dag::NodeList<NUM_OF_NODES> &nodes,
                            std::atomic<bool> &stopFlag) {
   for (size_t nodeIndex = 0; nodeIndex < nodes.getNumberOfNodes();
        nodeIndex++) {
     dag::INode *currentNode = nodes.getNodeAt(nodeIndex);
-    currentNode->execute();
+    currentNode->run();
+    currentNode->setDone();
 
     if (stopFlag) {
       break;
@@ -21,7 +24,7 @@ void runNodeListSerialOnce(dag::NodeList<NUM_OF_NODES> nodes,
 }
 
 template <size_t NUM_OF_NODES>
-void runNodeListSerialNTimes(dag::NodeList<NUM_OF_NODES> nodes,
+void runNodeListSerialNTimes(dag::NodeList<NUM_OF_NODES> &nodes,
                              std::atomic<bool> &stopFlag, size_t n) {
   for (int iter = 0; iter < n; iter++) {
     runNodeListSerialOnce(nodes, stopFlag);
@@ -33,51 +36,90 @@ void runNodeListSerialNTimes(dag::NodeList<NUM_OF_NODES> nodes,
 }
 
 template <size_t NUM_OF_NODES>
-void runNodeListSerialLoop(dag::NodeList<NUM_OF_NODES> nodes,
+void runNodeListSerialLoop(dag::NodeList<NUM_OF_NODES> &nodes,
                            std::atomic<bool> &stopFlag) {
   while (!stopFlag) {
     runNodeListSerialOnce(nodes, stopFlag);
   }
 }
 
-// template <size_t GRAPH_SIZE, size_t NUMBER_OF_THREADS, size_t
-// TASK_BUFFER_SIZE> void runGraphParallelOnce(dag::Dag<GRAPH_SIZE> &graph,
-//                           std::atomic<bool> &stopFlag) {
-//   const auto tasks = graph.getSortedTasks();
+template <size_t NUM_OF_NODES, size_t NUMBER_OF_THREADS,
+          size_t TASK_BUFFER_SIZE>
+void runNodeListParallelOnce(
+    dag::NodeList<NUM_OF_NODES> &nodes,
+    threadPool::ThreadPool<NUMBER_OF_THREADS, TASK_BUFFER_SIZE> &tPool,
+    std::atomic<bool> &stopFlag) {
 
-//   threadPool::ThreadPool<NUMBER_OF_THREADS, GRAPH_SIZE, TASK_BUFFER_SIZE>
-//   pool{
-//       tasks, 1};
+  std::array<bool, NUM_OF_NODES> doneFlags{};
+  std::array<bool, NUM_OF_NODES> scheduledFlags{};
 
-//   pool.waitForAllTasks(stopFlag);
-// }
+  for (size_t nodeIndex = 0; nodeIndex < nodes.getNumberOfNodes();
+       nodeIndex++) {
+    nodes.getNodeAt(nodeIndex)->reset();
+  }
 
-// template <size_t GRAPH_SIZE, size_t NUMBER_OF_THREADS, size_t
-// TASK_BUFFER_SIZE> void runGraphParallelNTimes(dag::Dag<GRAPH_SIZE> &graph,
-//                             std::atomic<bool> &stopFlag, size_t n,
-//                             bool waitForPrevious, const size_t timeoutMillis)
-//                             {
-//   const auto tasks = graph.getSortedTasks();
+  size_t numberOfTasksDone = 0;
+  while (!stopFlag && (numberOfTasksDone < nodes.getNumberOfNodes())) {
+    for (size_t nodeIndex = 0; nodeIndex < nodes.getNumberOfNodes();
+         nodeIndex++) {
+      dag::INode *node = nodes.getNodeAt(nodeIndex);
+      if (node->isReady() && !doneFlags[nodeIndex] &&
+          !scheduledFlags[nodeIndex]) {
+        tPool.scheduleTask({node, nodeIndex, true});
+        scheduledFlags[nodeIndex] = true;
+      }
 
-//   threadPool::ThreadPool<NUMBER_OF_THREADS, GRAPH_SIZE, TASK_BUFFER_SIZE>
-//   pool{
-//       tasks, n};
+      if (stopFlag) {
+        break;
+      }
+    }
 
-//   pool.waitForAllTasks(stopFlag);
-// }
+    if (stopFlag) {
+      break;
+    }
 
-// template <size_t GRAPH_SIZE, size_t NUMBER_OF_THREADS, size_t
-// TASK_BUFFER_SIZE> void runGraphParallelLoop(dag::Dag<GRAPH_SIZE> &graph,
-//                           std::atomic<bool> &stopFlag, bool waitForPrevious,
-//                           const size_t timeoutMillis) {
-//   const auto tasks = graph.getSortedTasks();
+    utils::Optional<const threadPool::ThreadJob> doneTask =
+        tPool.tryGetNextDoneTask();
 
-//   threadPool::ThreadPool<NUMBER_OF_THREADS, GRAPH_SIZE, TASK_BUFFER_SIZE>
-//   pool{
-//       tasks};
+    while (doneTask.has_value()) {
+      dag::INode *doneNode = static_cast<dag::INode *>(doneTask.value()._task);
+      doneNode->setDone();
+      doneFlags[doneTask.value()._id] = true;
+      numberOfTasksDone++;
 
-//   pool.waitForAllTasks(stopFlag);
-// }
+      doneTask = tPool.tryGetNextDoneTask();
+    }
+  }
+}
+
+template <size_t NUM_OF_NODES, size_t NUMBER_OF_THREADS,
+          size_t TASK_BUFFER_SIZE>
+void runNodeListParallelNTimes(
+    dag::NodeList<NUM_OF_NODES> &nodes,
+    threadPool::ThreadPool<NUMBER_OF_THREADS, TASK_BUFFER_SIZE> &tPool,
+    std::atomic<bool> &stopFlag, size_t n) {
+  for (int iter = 0; iter < n; iter++) {
+    runNodeListParallelOnce(nodes, tPool, stopFlag);
+
+    if (stopFlag) {
+      break;
+    }
+  }
+}
+template <size_t NUM_OF_NODES, size_t NUMBER_OF_THREADS,
+          size_t TASK_BUFFER_SIZE>
+void runNodeListParallelLoop(
+    dag::NodeList<NUM_OF_NODES> &nodes,
+    threadPool::ThreadPool<NUMBER_OF_THREADS, TASK_BUFFER_SIZE> &tPool,
+    std::atomic<bool> &stopFlag) {
+  while (!stopFlag) {
+    runNodeListParallelOnce(nodes, tPool, stopFlag);
+
+    if (stopFlag) {
+      break;
+    }
+  }
+}
 
 } // namespace core
 

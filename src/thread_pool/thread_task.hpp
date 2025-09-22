@@ -1,7 +1,7 @@
 #ifndef THREAD_TASK_H
 #define THREAD_TASK_H
-#include <string>
 
+#include <cstddef>
 namespace threadPool {
 
 using ThreadTaskFunction = void (*)(void *);
@@ -10,8 +10,7 @@ class IThreadTask {
 public:
   virtual ~IThreadTask() = default;
   virtual void run() const = 0;
-  virtual std::string name() const = 0;
-  virtual bool shouldSyncWhenDone() const = 0;
+  virtual size_t getIdentifier() const = 0;
 };
 
 class NullThreadTask final : public IThreadTask {
@@ -22,8 +21,13 @@ public:
   ~NullThreadTask() override {}
 
   void run() const override {}
-  std::string name() const override { return "NullThreadTask"; }
-  bool shouldSyncWhenDone() const override { return false; }
+  size_t getIdentifier() const override { return 0UL; }
+};
+
+struct ThreadJob {
+  IThreadTask *_task;
+  size_t _id;
+  bool _shouldSyncWhenDone;
 };
 
 const NullThreadTask nullThreadTask{};
