@@ -9,6 +9,7 @@
 #include <cassert>
 #include <chrono>
 #include <condition_variable>
+#include <cstddef>
 #include <iostream>
 #include <mutex>
 #include <optional>
@@ -55,7 +56,16 @@ public:
                     << "Running a task = " << task->getIdentifier() << "\n";
 #endif
 
+#ifdef PROFILELOG
+          job._startedTimePoint = std::chrono::steady_clock::now();
+          job._threadId = static_cast<size_t>(i);
+#endif
+
           task->run();
+
+#ifdef PROFILELOG
+          job._endedTimePoint = std::chrono::steady_clock::now();
+#endif
 
           lock.lock();
           m_numberOfRunningTasks--;
@@ -106,6 +116,10 @@ public:
       return false;
     }
 
+#ifdef PROFILELOG
+    job._scheduledTimePoint = std::chrono::steady_clock::now();
+#endif
+
     if (!m_scheduledJobs.push(job)) {
       return false;
     }
@@ -134,6 +148,10 @@ public:
       return false;
     }
 
+#ifdef PROFILELOG
+    job._scheduledTimePoint = std::chrono::steady_clock::now();
+#endif
+
     m_numberOfTasks++;
     bool success = m_scheduledJobs.push(job);
     assert(success);
@@ -148,15 +166,15 @@ public:
     return true;
   }
 
-  utils::Optional<const ThreadJob> tryGetNextDoneTask() {
+  utils::Optional<ThreadJob> tryGetNextDoneTask() {
     std::unique_lock lock(m_mtx);
 
     if (m_doneJobs.empty()) {
-      return utils::Optional<const ThreadJob>();
+      return utils::Optional<ThreadJob>();
     }
 
     m_numberOfTasks--;
-    const ThreadJob job = m_doneJobs.pop().value();
+    ThreadJob job = m_doneJobs.pop().value();
     assert(job._task != nullptr);
 
 #ifdef DEBUGLOG
@@ -169,17 +187,17 @@ public:
     return job;
   }
 
-  utils::Optional<const ThreadJob> getNextDoneTask() {
+  utils::Optional<ThreadJob> getNextDoneTask() {
     std::unique_lock lock(m_mtx);
 
     m_finishTaskCv.wait(lock, [this] { return !m_doneJobs.empty() || m_stop; });
 
     if (m_stop) {
-      return utils::Optional<const ThreadJob>();
+      return utils::Optional<ThreadJob>();
     }
 
     m_numberOfTasks--;
-    const ThreadJob job = m_doneJobs.pop().value();
+    ThreadJob job = m_doneJobs.pop().value();
     assert(job._task != nullptr);
 
 #ifdef DEBUGLOG

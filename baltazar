@@ -63,6 +63,7 @@ def main():
         help="Select which build to perform action on (default: debug).",
     )
     parser.add_argument("--print-log", action="store_true", help="Turn on log prints in configure step.")
+    parser.add_argument("--profile-log", action="store_true", help="Turn on log profiling in configure step.")
     args = parser.parse_args()
 
     if args.command == "list":
@@ -79,6 +80,10 @@ def main():
                 cmd = cmd + ' -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS -DDEBUGLOG=1"'
             else:
                 cmd = cmd + ' -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS -UDEBUGLOG"'
+            if args.profile_log:
+                cmd = cmd + ' -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS -DPROFILELOG=1"'
+            else:
+                cmd = cmd + ' -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS -UPROFILELOG"'
             print("running command: "+cmd)
             subprocess.run(cmd, shell=True)
 
@@ -87,6 +92,10 @@ def main():
                 cmd = cmd + ' -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS -DDEBUGLOG=1"'
             else:
                 cmd = cmd + ' -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS -UDEBUGLOG"'
+            if args.profile_log:
+                cmd = cmd + ' -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS -DPROFILELOG=1"'
+            else:
+                cmd = cmd + ' -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS -UPROFILELOG"'
             print("running command: "+cmd)
             subprocess.run(cmd, shell=True)
         else:
@@ -95,6 +104,10 @@ def main():
                 cmd = cmd + ' -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS -DDEBUGLOG=1"'
             else:
                 cmd = cmd + ' -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS -UDEBUGLOG"'
+            if args.profile_log:
+                cmd = cmd + ' -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS -DPROFILELOG=1"'
+            else:
+                cmd = cmd + ' -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS -UPROFILELOG"'
             print("running command: "+cmd)
             subprocess.run(cmd, shell=True)
 

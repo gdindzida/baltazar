@@ -1,4 +1,5 @@
 build*/
+logs/
 .idea/
 scripts/__pycache__/*
 scripts/targets.txt

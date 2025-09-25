@@ -1,6 +1,7 @@
 #ifndef THREAD_TASK_H
 #define THREAD_TASK_H
 
+#include <chrono>
 #include <cstddef>
 namespace threadPool {
 
@@ -28,6 +29,13 @@ struct ThreadJob {
   IThreadTask *_task;
   size_t _id;
   bool _shouldSyncWhenDone;
+#ifdef PROFILELOG
+  std::chrono::steady_clock::time_point _scheduledTimePoint;
+  std::chrono::steady_clock::time_point _startedTimePoint;
+  std::chrono::steady_clock::time_point _endedTimePoint;
+  std::chrono::steady_clock::time_point _syncedTimePoint;
+  size_t _threadId;
+#endif
 };
 
 const NullThreadTask nullThreadTask{};

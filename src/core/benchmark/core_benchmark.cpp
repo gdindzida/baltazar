@@ -1,7 +1,11 @@
-#include "../core.hpp"
+#include "../core_parallel.hpp"
+#include "../core_serial.hpp"
+#include "multithreaded_profiling.hpp"
+#include "profiling.hpp"
 
 #include <benchmark/benchmark.h>
 #include <chrono>
+#include <filesystem>
 #include <future>
 #include <random>
 #include <thread>
@@ -94,6 +98,27 @@ private:
   double m_sum{0.0};
 };
 
+namespace fs = std::filesystem;
+
+fs::path getNewLogPath() {
+  fs::path logDir = fs::current_path() / "logs";
+  if (!fs::exists(logDir)) {
+    fs::create_directory(logDir);
+  }
+
+  auto now = std::chrono::system_clock::now();
+  std::time_t now_c = std::chrono::system_clock::to_time_t(now);
+
+  std::stringstream ss;
+  ss << std::put_time(std::localtime(&now_c), "%Y-%m-%d_%H-%M-%S");
+
+  std::string filename = "log_" + ss.str() + ".txt";
+
+  fs::path logFile = logDir / filename;
+
+  return logFile;
+}
+
 // NOLINTNEXTLINE
 static void BM_RunSerial(benchmark::State &state) {
   std::map<std::string, size_t> indexMap{
@@ -107,10 +132,6 @@ static void BM_RunSerial(benchmark::State &state) {
   TaskE taskE{2, 6};
   TaskF taskF;
   TaskG taskG;
-  const std::array<size_t, 7> m_names{indexMap["nodeB"], indexMap["nodeF"],
-                                      indexMap["nodeE"], indexMap["nodeC"],
-                                      indexMap["nodeA"], indexMap["nodeD"],
-                                      indexMap["nodeG"]};
 
   static dag::Node<2, TaskA> nodeA{taskA, indexMap["nodeA"]};
   nodeA.setPriority(10);
@@ -149,8 +170,25 @@ static void BM_RunSerial(benchmark::State &state) {
 
   std::atomic<bool> stopFlag{false};
 
+#ifdef PROFILELOG
+  fs::path logPath = getNewLogPath();
+  std::ofstream out(logPath);
+  if (!out) {
+    std::cerr << "Failed to create log file: " << logPath << "\n";
+    return;
+  }
+
+  core::SerialCoreRunner<core::MultiThreadedCoreProfiler<100>> runner{&out,
+                                                                      true};
+  // core::SerialCoreRunner<core::SingleThreadedCoreProfiler<100>> runner{&out,
+  //                                                                      true};
+  // core::SerialCoreRunner runner;
+#else
+  core::SerialCoreRunner runner;
+#endif
+
   for (auto _ : state) {
-    core::runNodeListSerialNTimes(nodeList, stopFlag, numberOfLoops);
+    runner.runNodeListSerialNTimes(nodeList, stopFlag, numberOfLoops);
   }
 }
 BENCHMARK(BM_RunSerial)
@@ -162,7 +200,7 @@ static void BM_RunParallel(benchmark::State &state) {
   std::map<std::string, size_t> indexMap{
       {"nodeA", 1}, {"nodeB", 2}, {"nodeC", 3}, {"nodeD", 4},
       {"nodeE", 5}, {"nodeF", 6}, {"nodeG", 7}};
-  dag::NodeList<7> m_nodeList{};
+  dag::NodeList<7> nodeList{};
   TaskA taskA;
   TaskB taskB{2};
   TaskC taskC{3.f};
@@ -170,10 +208,6 @@ static void BM_RunParallel(benchmark::State &state) {
   TaskE taskE{2, 6};
   TaskF taskF;
   TaskG taskG;
-  const std::array<size_t, 7> m_names{indexMap["nodeB"], indexMap["nodeF"],
-                                      indexMap["nodeE"], indexMap["nodeC"],
-                                      indexMap["nodeA"], indexMap["nodeD"],
-                                      indexMap["nodeG"]};
 
   static dag::Node<2, TaskA> nodeA{taskA, indexMap["nodeA"]};
   nodeA.setPriority(10);
@@ -200,21 +234,39 @@ static void BM_RunParallel(benchmark::State &state) {
   nodeG.setDependencyAt<0>(nodeA);
   nodeG.setDependencyAt<1>(nodeD);
 
-  m_nodeList.addNode(&nodeA);
-  m_nodeList.addNode(&nodeB);
-  m_nodeList.addNode(&nodeC);
-  m_nodeList.addNode(&nodeD);
-  m_nodeList.addNode(&nodeE);
-  m_nodeList.addNode(&nodeF);
-  m_nodeList.addNode(&nodeG);
+  nodeList.addNode(&nodeA);
+  nodeList.addNode(&nodeB);
+  nodeList.addNode(&nodeC);
+  nodeList.addNode(&nodeD);
+  nodeList.addNode(&nodeE);
+  nodeList.addNode(&nodeF);
+  nodeList.addNode(&nodeG);
 
-  m_nodeList.sortNodes(dag::SortType::DepthOrPriority);
+  nodeList.sortNodes(dag::SortType::DepthOrPriority);
 
   std::atomic<bool> stopFlag{false};
   threadPool::ThreadPool<numberOfThreads, 10> tPool{};
 
+#ifdef PROFILELOG
+  fs::path logPath = getNewLogPath();
+  std::ofstream out(logPath);
+  if (!out) {
+    std::cerr << "Failed to create log file: " << logPath << "\n";
+    return;
+  }
+
+  core::ParallelCoreRunner<core::MultiThreadedCoreProfiler<100>> runner{&out,
+                                                                        true};
+  // core::ParallelCoreRunner<core::SingleThreadedCoreProfiler<100>>
+  // runner{&out,
+  //                                                                        true};
+  // core::ParallelCoreRunner runner;
+#else
+  core::ParallelCoreRunner runner;
+#endif
+
   for (auto _ : state) {
-    core::runNodeListParallelNTimes(m_nodeList, tPool, stopFlag, numberOfLoops);
+    runner.runNodeListParallelNTimes(nodeList, tPool, stopFlag, numberOfLoops);
   }
 }
 BENCHMARK(BM_RunParallel)
