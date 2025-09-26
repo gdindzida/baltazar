@@ -3,3 +3,8 @@ logs/
 .idea/
 scripts/__pycache__/*
 scripts/targets.txt
+compile_commands.json
+.swp
+.profile_log:
+temp/
+.cache/

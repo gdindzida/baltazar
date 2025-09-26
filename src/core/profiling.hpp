@@ -19,8 +19,7 @@ inline void logJobFunction(std::ofstream &ofs, threadPool::ThreadJob &job) {
 
   ofs << "J, " << job._task->getIdentifier() << ", " << job._id << ", "
       << job._threadId << ", " << scheduledTime.count() << ", "
-      << runningTime.count() << ", " << waitingTime.count() << ", "
-      << "\n";
+      << runningTime.count() << ", " << waitingTime.count() << "\n";
 #endif
 }
 
