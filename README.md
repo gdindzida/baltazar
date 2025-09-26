@@ -37,13 +37,10 @@ topological sort of DAG.
     - 3D plot visualizer plugin
     - Image visualizer plugin (MVP)
     - Investigate how to make debugging easy (MVP)
-    - Investigate how to debug thread pool (MVP)
-    - Investigate how to profile pipeline easily (MVP)
     - Make code MISRA compliant
 - Tests & Benchmarks
 - Plugins
-    - CV detection pipeline 
-    - ROS robot manipulator pipeline
+    - Implement RL reverse pendulum stabilizer
     - MVP example??? (MVP)
 - Bugs
 - CI/CD
