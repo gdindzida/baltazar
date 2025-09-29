@@ -156,8 +156,34 @@ def main():
                 sys.exit(1)
 
 
-        # TODO: write run all tests.
+    if args.command == "test":
+        binaries = list_baltazar_binaries("debug") 
 
+        filtered = [s for s in binaries if str(s).endswith("_test")]
+
+        if args.target:
+            binary_exists = False
+            for bin in filtered:
+                if bin.name == args.target:
+                    subprocess.run("./"+str(bin), shell=True)
+                    binary_exists = True
+                    break
+            
+            if not binary_exists:
+                print("ERROR: binary doesn't exist!")
+                sys.exit(1)
+        else:
+            all_successfull = True 
+            for bin in filtered:
+                result = subprocess.run("./"+str(bin), shell=True)
+                if result.returncode != 0 and all_successfull:
+                    all_successfull = False
+
+
+            if not all_successfull:
+                print("ERROR: Some tests failed!")
+
+                
 
 
 if __name__ == "__main__":

@@ -30,6 +30,8 @@ topological sort of DAG.
         - For embedded complience
     - GPU support for CUDA and openCL
         - What is needed to make it easy to use?
+    - Make public API
+        - put everything in baltazar namespace
 - Support
     - DAG visualization (MVP)
     - investigate creating DAG input as yaml or json or something similar
@@ -39,6 +41,8 @@ topological sort of DAG.
     - Investigate how to make debugging easy (MVP)
     - Make code MISRA compliant
 - Tests & Benchmarks
+    - run all tests and benchmarks (MVP)
+    - test benchmarks (MVP)
 - Plugins
     - Implement RL reverse pendulum stabilizer
     - MVP example??? (MVP)
