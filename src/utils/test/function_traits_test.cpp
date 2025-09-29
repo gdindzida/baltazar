@@ -5,6 +5,8 @@
 #include <type_traits>
 #include <vector>
 
+namespace baltazar {
+
 TEST(FunctionalTraitsTest, TestExtractionOfTraitsOfSomeFunction) {
   // Arrange
 
@@ -102,3 +104,5 @@ TEST(FunctionalTraitsTest, TestExtractionOfTraitsOfSomeFunctor) {
   EXPECT_TRUE(arg1Matches);
   EXPECT_EQ(argsSize, 2);
 }
+
+} // namespace baltazar

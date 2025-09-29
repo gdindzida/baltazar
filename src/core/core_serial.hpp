@@ -10,6 +10,7 @@
 #include <ostream>
 #include <type_traits>
 
+namespace baltazar {
 namespace core {
 
 template <typename ProfilerType = NullProfiler> class SerialCoreRunner {
@@ -107,5 +108,6 @@ private:
 SerialCoreRunner()->SerialCoreRunner<NullProfiler>;
 
 } // namespace core
+} // namespace baltazar
 
 #endif // CORE_SERIAL_HPP

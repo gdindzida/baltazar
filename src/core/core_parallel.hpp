@@ -8,6 +8,7 @@
 #include <atomic>
 #include <ostream>
 
+namespace baltazar {
 namespace core {
 
 template <typename ProfilerType = NullProfiler> class ParallelCoreRunner {
@@ -138,5 +139,6 @@ private:
 ParallelCoreRunner()->ParallelCoreRunner<NullProfiler>;
 
 } // namespace core
+} // namespace baltazar
 
 #endif // CORE_PARALLEL_HPP

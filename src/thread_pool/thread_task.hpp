@@ -3,6 +3,8 @@
 
 #include <chrono>
 #include <cstddef>
+
+namespace baltazar {
 namespace threadPool {
 
 using ThreadTaskFunction = void (*)(void *);
@@ -41,5 +43,6 @@ struct ThreadJob {
 const NullThreadTask nullThreadTask{};
 
 } // namespace threadPool
+} // namespace baltazar
 
 #endif // THREAD_TASK_H

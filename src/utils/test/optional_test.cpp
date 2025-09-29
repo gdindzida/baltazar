@@ -2,6 +2,8 @@
 
 #include <gtest/gtest.h>
 
+namespace baltazar {
+
 template <typename T>
 utils::Optional<T> helperFunc(const T &value, bool setValue) {
   if (setValue) {
@@ -59,3 +61,5 @@ TEST(OptionalTest, HellperFuncReturnsGivenValueAndThenSetsItToDIfferentValue) {
   EXPECT_TRUE(myRetrunValue.has_value());
   EXPECT_EQ(myRetrunValue.value(), otherValue);
 }
+
+} // namespace baltazar

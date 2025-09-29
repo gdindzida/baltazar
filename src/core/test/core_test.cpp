@@ -1,8 +1,11 @@
-#include "../core.hpp"
+#include "../core_parallel.hpp"
+#include "../core_serial.hpp"
 
 #include <atomic>
 #include <gtest/gtest.h>
 #include <thread>
+
+namespace baltazar {
 
 class TaskA {
 public:
@@ -143,9 +146,10 @@ protected:
 TEST_F(CoreTest, RunSerialOnce) {
   // Arrange
   std::atomic<bool> stopFlag;
+  core::SerialCoreRunner runner{};
 
   // Act
-  core::runNodeListSerialOnce(this->getNodes(), stopFlag);
+  runner.runNodeListSerialOnce(this->getNodes(), stopFlag);
 
   double retValue =
       *static_cast<double *>(this->getNodes().getNodeAt(6)->getOutputPtr());
@@ -158,9 +162,10 @@ TEST_F(CoreTest, RunSerialNTimes) {
   // Arrange
   std::atomic<bool> stopFlag;
   constexpr size_t n = 16;
+  core::SerialCoreRunner runner{};
 
   // Act
-  core::runNodeListSerialNTimes(this->getNodes(), stopFlag, n);
+  runner.runNodeListSerialNTimes(this->getNodes(), stopFlag, n);
 
   double retValue =
       *static_cast<double *>(this->getNodes().getNodeAt(6)->getOutputPtr());
@@ -172,10 +177,13 @@ TEST_F(CoreTest, RunSerialNTimes) {
 TEST_F(CoreTest, RunSrialeInALoop) {
   // Arrange
   std::atomic<bool> stopFlag{false};
+  auto threadFunc = [this, &stopFlag]() {
+    core::SerialCoreRunner runner{};
+    runner.runNodeListSerialLoop(this->getNodes(), stopFlag);
+  };
 
   // Act
-  std::thread t(core::runNodeListSerialLoop<7>, std::ref(this->getNodes()),
-                std::ref(stopFlag));
+  std::thread t(threadFunc);
 
   std::this_thread::sleep_for(std::chrono::milliseconds(2));
   stopFlag = true;
@@ -189,9 +197,10 @@ TEST_F(CoreTest, RunParallelOnce) {
   // Arrange
   std::atomic<bool> stopFlag;
   threadPool::ThreadPool<2, 10> tPoll{};
+  core::ParallelCoreRunner runner{};
 
   // Act
-  core::runNodeListParallelOnce(this->getNodes(), tPoll, stopFlag);
+  runner.runNodeListParallelOnce(this->getNodes(), tPoll, stopFlag);
 
   double retValue =
       *static_cast<double *>(this->getNodes().getNodeAt(6)->getOutputPtr());
@@ -205,9 +214,10 @@ TEST_F(CoreTest, RunParallelNTimes) {
   std::atomic<bool> stopFlag;
   constexpr size_t n = 16;
   threadPool::ThreadPool<2, 10> tPoll{};
+  core::ParallelCoreRunner runner{};
 
   // Act
-  core::runNodeListParallelNTimes(this->getNodes(), tPoll, stopFlag, n);
+  runner.runNodeListParallelNTimes(this->getNodes(), tPoll, stopFlag, n);
 
   double retValue =
       *static_cast<double *>(this->getNodes().getNodeAt(6)->getOutputPtr());
@@ -220,11 +230,13 @@ TEST_F(CoreTest, RunParallelInALoop) {
   // Arrange
   std::atomic<bool> stopFlag{false};
   threadPool::ThreadPool<2, 10> tPoll{};
+  auto threadFunc = [this, &stopFlag, &tPoll]() {
+    core::ParallelCoreRunner runner{};
+    runner.runNodeListParallelLoop(this->getNodes(), tPoll, stopFlag);
+  };
 
   // Act
-  std::thread t(core::runNodeListParallelLoop<7, 2, 10>,
-                std::ref(this->getNodes()), std::ref(tPoll),
-                std::ref(stopFlag));
+  std::thread t(threadFunc);
 
   std::this_thread::sleep_for(std::chrono::milliseconds(2));
   stopFlag = true;
@@ -233,3 +245,5 @@ TEST_F(CoreTest, RunParallelInALoop) {
   t.join();
   EXPECT_TRUE(true);
 }
+
+} // namespace baltazar

@@ -15,6 +15,7 @@
 #include <optional>
 #include <thread>
 
+namespace baltazar {
 namespace threadPool {
 
 template <size_t THREAD_NUM, size_t MAX_QUEUE_SIZE> class ThreadPool {
@@ -233,5 +234,6 @@ public:
   }
 };
 } // namespace threadPool
+} // namespace baltazar
 
 #endif // THREAD_POOL_H

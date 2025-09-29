@@ -3,6 +3,8 @@
 #include <chrono>
 #include <gtest/gtest.h>
 
+namespace baltazar {
+
 class TestThreadTask final : public threadPool::IThreadTask {
 public:
   explicit TestThreadTask(void *ctx, size_t identifier)
@@ -211,3 +213,5 @@ TEST(ThreadPoolTest, CreateThreadsWithManyTasksAndWaitForDoneTasks) {
   EXPECT_LE(counter, numOfTasks);
   EXPECT_EQ(doneTaskCounter, numOfTasks / 2);
 }
+
+} // namespace baltazar

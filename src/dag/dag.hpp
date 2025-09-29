@@ -13,6 +13,7 @@
 #include <unistd.h>
 #include <utility>
 
+namespace baltazar {
 namespace dag {
 
 template <size_t NUM_OF_EDGES, typename FUNCTOR> class Node;
@@ -272,5 +273,6 @@ private:
 };
 
 } // namespace dag
+} // namespace baltazar
 
 #endif // DAG_H

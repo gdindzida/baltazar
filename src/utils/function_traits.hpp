@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <tuple>
 
+namespace baltazar {
 namespace utils {
 
 // Base case
@@ -36,5 +37,6 @@ template <typename F>
 struct FunctionTraits : FunctionTraits<decltype(&F::operator())> {};
 
 } // namespace utils
+} // namespace baltazar
 
 #endif // FUNCTION_TRAITS_HPP

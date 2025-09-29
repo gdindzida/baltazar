@@ -12,6 +12,7 @@
 #include <mutex>
 #include <thread>
 
+namespace baltazar {
 namespace core {
 
 template <size_t QUEUE_SIZE>
@@ -101,5 +102,6 @@ private:
 };
 
 } // namespace core
+} // namespace baltazar
 
 #endif // MULTITHREADED_PROFILING_HPP

@@ -4,6 +4,8 @@
 #include "../thread_pool/thread_task.hpp"
 #include <cstddef>
 #include <fstream>
+
+namespace baltazar {
 namespace core {
 
 using microsecs = std::chrono::microseconds;
@@ -109,5 +111,6 @@ private:
 };
 
 } // namespace core
+} // namespace baltazar
 
 #endif // PROFILING_HPP

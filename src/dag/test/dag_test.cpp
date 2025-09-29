@@ -6,6 +6,8 @@
 #include <ostream>
 #include <vector>
 
+namespace baltazar {
+
 class TaskA {
 public:
   double operator()(int a, float b) {
@@ -507,3 +509,5 @@ TEST(DagTest, DetectsCycle) {
   // Act & Assert
   EXPECT_DEATH({ nodeList.sortNodes(); }, ".*");
 }
+
+} // namespace baltazar

@@ -7,6 +7,7 @@
 #include <array>
 #include <cstdio>
 
+namespace baltazar {
 namespace threadPool {
 template <size_t MAX_TASKS> class TaskQueue {
   std::array<ThreadJob, MAX_TASKS> m_tasks{};
@@ -46,5 +47,6 @@ public:
   size_t size() const { return m_size; }
 };
 } // namespace threadPool
+} // namespace baltazar
 
 #endif // TASK_QUEUE_H

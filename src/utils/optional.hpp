@@ -4,6 +4,7 @@
 #include <new>
 #include <utility>
 
+namespace baltazar {
 namespace utils {
 
 template <typename T> class Optional {
@@ -67,5 +68,6 @@ private:
 };
 
 } // namespace utils
+} // namespace baltazar
 
 #endif // MINIMAL_OPTIONAL_HPP

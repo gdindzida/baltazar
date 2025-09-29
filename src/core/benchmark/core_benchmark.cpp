@@ -10,6 +10,8 @@
 #include <random>
 #include <thread>
 
+namespace baltazar {
+
 constexpr size_t numberOfIterations = 1;
 constexpr size_t numberOfLoops = 1000;
 constexpr size_t numberOfThreads = 8;
@@ -272,5 +274,7 @@ static void BM_RunParallel(benchmark::State &state) {
 BENCHMARK(BM_RunParallel)
     ->Unit(benchmark::kMillisecond)
     ->Iterations(numberOfIterations);
+
+} // namespace baltazar
 
 BENCHMARK_MAIN();
