@@ -1,5 +1,5 @@
-#ifndef CORE_SERIAL_HPP
-#define CORE_SERIAL_HPP
+#ifndef BALTAZAR_CORE_SERIAL_HPP
+#define BALTAZAR_CORE_SERIAL_HPP
 
 #include "../core/profiling.hpp"
 #include "../dag/dag.hpp"
@@ -13,12 +13,12 @@
 namespace baltazar {
 namespace core {
 
-template <typename ProfilerType = NullProfiler> class SerialCoreRunner {
+template <typename PROFILER_TYPE = NullProfiler> class SerialCoreRunner {
 public:
   SerialCoreRunner(std::ofstream *s = nullptr, bool profilerOn = false)
       : m_profiler(*s, profilerOn) {
-    if constexpr (!std::is_same_v<std::decay_t<ProfilerType>, NullProfiler>) {
-      assert(s != nullptr);
+    if constexpr (!std::is_same_v<std::decay_t<PROFILER_TYPE>, NullProfiler>) {
+      assert(s != nullptr && "Profiler object provided is null.");
     }
   }
 
@@ -102,7 +102,7 @@ public:
 
 private:
   size_t m_waveNumber{0};
-  ProfilerType m_profiler;
+  PROFILER_TYPE m_profiler;
 };
 
 SerialCoreRunner()->SerialCoreRunner<NullProfiler>;
@@ -110,4 +110,4 @@ SerialCoreRunner()->SerialCoreRunner<NullProfiler>;
 } // namespace core
 } // namespace baltazar
 
-#endif // CORE_SERIAL_HPP
+#endif // BALTAZAR_CORE_SERIAL_HPP

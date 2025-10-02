@@ -1,13 +1,11 @@
-#ifndef THREAD_TASK_H
-#define THREAD_TASK_H
+#ifndef BALTAZAR_THREAD_TASK_HPP
+#define BALTAZAR_THREAD_TASK_HPP
 
 #include <chrono>
 #include <cstddef>
 
 namespace baltazar {
 namespace threadPool {
-
-using ThreadTaskFunction = void (*)(void *);
 
 class IThreadTask {
 public:
@@ -45,4 +43,4 @@ const NullThreadTask nullThreadTask{};
 } // namespace threadPool
 } // namespace baltazar
 
-#endif // THREAD_TASK_H
+#endif // BALTAZAR_THREAD_TASK_HPP

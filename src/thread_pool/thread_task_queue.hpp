@@ -1,5 +1,5 @@
-#ifndef TASK_QUEUE_H
-#define TASK_QUEUE_H
+#ifndef BALTAZAR_TASK_QUEUE_HPP
+#define BALTAZAR_TASK_QUEUE_HPP
 
 #include "../utils/optional.hpp"
 #include "thread_task.hpp"
@@ -49,4 +49,4 @@ public:
 } // namespace threadPool
 } // namespace baltazar
 
-#endif // TASK_QUEUE_H
+#endif // BALTAZAR_TASK_QUEUE_HPP

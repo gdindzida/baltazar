@@ -1,6 +1,5 @@
-
-#ifndef MULTITHREADED_PROFILING_HPP
-#define MULTITHREADED_PROFILING_HPP
+#ifndef BALTAZAR_MULTITHREADED_PROFILING_HPP
+#define BALTAZAR_MULTITHREADED_PROFILING_HPP
 #include "../thread_pool/thread_task.hpp"
 #include "../thread_pool/thread_task_queue.hpp"
 #include "profiling.hpp"
@@ -53,7 +52,7 @@ public:
     }
 
     bool success = m_tasksToLog.push(job);
-    assert(success);
+    assert(success && "Fatal error: mutex is locked twice.");
 
     lock.unlock();
     m_addTaskCv.notify_one();
@@ -104,4 +103,4 @@ private:
 } // namespace core
 } // namespace baltazar
 
-#endif // MULTITHREADED_PROFILING_HPP
+#endif // BALTAZAR_MULTITHREADED_PROFILING_HPP

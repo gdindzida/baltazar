@@ -1,5 +1,5 @@
-#ifndef DAG_H
-#define DAG_H
+#ifndef BALTAZAR_DAG_HPP
+#define BALTAZAR_DAG_HPP
 
 #include "../thread_pool/thread_task.hpp"
 #include "../utils/function_traits.hpp"
@@ -48,14 +48,25 @@ private:
   template <size_t N> friend class NodeList;
 };
 
+struct Empty {};
+
 template <size_t NUM_OF_DEPS, typename FUNCTOR> class Node : public INode {
 public:
   using Traits = utils::FunctionTraits<FUNCTOR>;
   using Output = typename Traits::ReturnType;
   using Args = typename Traits::ArgsTuple;
+  using StorageType =
+      std::conditional_t<std::is_void_v<Output>, struct Empty, Output>;
   static constexpr size_t argsSize = Traits::ArgsSize;
 
-  Node(FUNCTOR &f, size_t identifer) : m_functor(f), m_identifier(identifer) {
+  Node(const FUNCTOR &f, size_t identifer)
+      : m_functor(f), m_identifier(identifer) {
+    for (int i = 0; i < NUM_OF_DEPS; i++) {
+      m_deps[i] = nullptr;
+    }
+  }
+
+  Node(FUNCTOR &&f, size_t identifer) : m_functor(f), m_identifier(identifer) {
     for (int i = 0; i < NUM_OF_DEPS; i++) {
       m_deps[i] = nullptr;
     }
@@ -75,7 +86,9 @@ public:
     m_deps[I] = &otherNode;
   }
 
-  Output &getOutputRef() { return m_output; }
+  // std::enable_if_t<!std::is_void_v<Output>, Output &> getOutputRef() {
+  //   return m_output;
+  // }
 
   // INode functionality
   bool isReady() const override {
@@ -89,7 +102,7 @@ public:
 
     m_ready = true;
     for (int i = 0; i < NUM_OF_DEPS; i++) {
-      assert(m_deps[i] != nullptr);
+      assert(m_deps[i] != nullptr && "One dependency is not set!");
       if (!m_deps[i]->isDone()) {
         m_ready = false;
       }
@@ -102,11 +115,17 @@ public:
   void reset() override { m_ready = false; }
 
   // INode functionality
-  void *getOutputPtr() override { return static_cast<void *>(&m_output); }
+  void *getOutputPtr() override {
+    if constexpr (std::is_void_v<Output>) {
+      return nullptr;
+    } else {
+      return &m_output;
+    }
+  }
 
   // INode functionality
   INode *getDepAt(size_t index) override {
-    assert(index < NUM_OF_DEPS);
+    assert(index < NUM_OF_DEPS && "Index out of bounds!");
     return m_deps[index];
   }
 
@@ -133,7 +152,7 @@ public:
 
   // IThreadTask functionality
   void run() const override {
-    assert(this->isReady());
+    assert(this->isReady() && "Node is not ready to run!");
     runImpl(std::make_index_sequence<argsSize>{});
   }
 
@@ -155,14 +174,19 @@ protected:
 
 private:
   template <std::size_t... Is> void runImpl(std::index_sequence<Is...>) const {
-    m_output = m_functor(*static_cast<std::tuple_element_t<Is, Args> *>(
-        m_deps[Is]->getOutputPtr())...);
+    if constexpr (!std::is_void_v<Output>) {
+      m_output = m_functor(*static_cast<std::tuple_element_t<Is, Args> *>(
+          m_deps[Is]->getOutputPtr())...);
+    } else {
+      m_functor(*static_cast<std::tuple_element_t<Is, Args> *>(
+          m_deps[Is]->getOutputPtr())...);
+    }
   }
 
   mutable FUNCTOR m_functor;
   std::array<INode *, NUM_OF_DEPS> m_deps;
   mutable bool m_ready{false};
-  mutable Output m_output;
+  mutable StorageType m_output;
   bool m_active{false};
   bool m_visited{false};
   bool m_done{false};
@@ -185,13 +209,13 @@ public:
   NodeList() {}
 
   void addNode(INode *node) {
-    assert(m_size < NUM_OF_NODES);
+    assert(m_size < NUM_OF_NODES && "Index out of bounds!");
     m_nodes[m_size] = node;
     m_size++;
   }
 
   INode *getNodeAt(size_t index) {
-    assert(index < m_size);
+    assert(index < m_size && "Index out of bounds!");
     return m_nodes[index];
   }
 
@@ -234,11 +258,12 @@ public:
     }
 
     if (sortType == SortType::CustomPriority) {
-      assert(customCompare != nullptr);
+      assert(customCompare != nullptr && "Custom priority provided is null!");
       std::sort(sortedNodes.begin(), sortedNodes.end(), customCompare);
     }
 
-    assert(sortedNodesSize == m_size);
+    assert(sortedNodesSize == m_size &&
+           "Fatal error: Sorted and initial array sizes do not match!");
     for (size_t nodeIndex = 0; nodeIndex < sortedNodesSize; nodeIndex++) {
       m_nodes[nodeIndex] = sortedNodes[nodeIndex];
       m_nodes[nodeIndex]->resetVisited();
@@ -248,7 +273,7 @@ public:
 private:
   void dfs(INode *node, std::array<INode *, NUM_OF_NODES> &sortedNodes,
            size_t &sortedNodesSize) const {
-    assert(!node->isActive());
+    assert(!node->isActive() && "Cycle in graph detected!");
 
     if (node->isVisited()) {
       return;
@@ -275,4 +300,4 @@ private:
 } // namespace dag
 } // namespace baltazar
 
-#endif // DAG_H
+#endif // BALTAZAR_DAG_HPP

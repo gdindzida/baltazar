@@ -1,5 +1,5 @@
-#ifndef FUNCTION_TRAITS_HPP
-#define FUNCTION_TRAITS_HPP
+#ifndef BALTAZAR_FUNCTION_TRAITS_HPP
+#define BALTAZAR_FUNCTION_TRAITS_HPP
 
 #include <cstddef>
 #include <tuple>
@@ -39,4 +39,4 @@ struct FunctionTraits : FunctionTraits<decltype(&F::operator())> {};
 } // namespace utils
 } // namespace baltazar
 
-#endif // FUNCTION_TRAITS_HPP
+#endif // BALTAZAR_FUNCTION_TRAITS_HPP

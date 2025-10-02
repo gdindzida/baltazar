@@ -1,5 +1,5 @@
-#ifndef PROFILING_HPP
-#define PROFILING_HPP
+#ifndef BALTAZAR_PROFILING_HPP
+#define BALTAZAR_PROFILING_HPP
 
 #include "../thread_pool/thread_task.hpp"
 #include <cstddef>
@@ -113,4 +113,4 @@ private:
 } // namespace core
 } // namespace baltazar
 
-#endif // PROFILING_HPP
+#endif // BALTAZAR_PROFILING_HPP

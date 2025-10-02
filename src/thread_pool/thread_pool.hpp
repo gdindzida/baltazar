@@ -1,5 +1,5 @@
-#ifndef THREAD_POOL_H
-#define THREAD_POOL_H
+#ifndef BALTAZAR_THREAD_POOL_HPP
+#define BALTAZAR_THREAD_POOL_HPP
 
 #include "../utils/optional.hpp"
 #include "thread_task.hpp"
@@ -72,7 +72,7 @@ public:
           m_numberOfRunningTasks--;
           if (job._shouldSyncWhenDone) {
             bool success = m_doneJobs.push(job);
-            assert(success);
+            assert(success && "Fatal error: mutex is locked twice.");
             lock.unlock();
 
             m_finishTaskCv.notify_all();
@@ -155,7 +155,7 @@ public:
 
     m_numberOfTasks++;
     bool success = m_scheduledJobs.push(job);
-    assert(success);
+    assert(success && "Fatal error: mutex is locked twice.");
 
 #ifdef DEBUGLOG
     std::cout << "Scheduling task " << job._task->getIdentifier() << "\n";
@@ -176,7 +176,8 @@ public:
 
     m_numberOfTasks--;
     ThreadJob job = m_doneJobs.pop().value();
-    assert(job._task != nullptr);
+    assert(job._task != nullptr &&
+           "Fatal error: Null pointer pushed to done tasks.");
 
 #ifdef DEBUGLOG
     std::cout << "Reporting done task " << job._task->getIdentifier() << "\n";
@@ -199,7 +200,8 @@ public:
 
     m_numberOfTasks--;
     ThreadJob job = m_doneJobs.pop().value();
-    assert(job._task != nullptr);
+    assert(job._task != nullptr &&
+           "Fatal error: Null pointer pushed to done tasks.");
 
 #ifdef DEBUGLOG
     std::cout << "Reporting done task " << job._task->getIdentifier() << "\n";
@@ -236,4 +238,4 @@ public:
 } // namespace threadPool
 } // namespace baltazar
 
-#endif // THREAD_POOL_H
+#endif // BALTAZAR_THREAD_POOL_HPP

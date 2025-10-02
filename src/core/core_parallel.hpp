@@ -1,5 +1,5 @@
-#ifndef CORE_PARALLEL_HPP
-#define CORE_PARALLEL_HPP
+#ifndef BALTAZAR_CORE_PARALLEL_HPP
+#define BALTAZAR_CORE_PARALLEL_HPP
 
 #include "../core/profiling.hpp"
 #include "../dag/dag.hpp"
@@ -16,7 +16,7 @@ public:
   ParallelCoreRunner(std::ofstream *s = nullptr, bool profilerOn = false)
       : m_profiler(*s, profilerOn) {
     if constexpr (!std::is_same_v<std::decay_t<ProfilerType>, NullProfiler>) {
-      assert(s != nullptr);
+      assert(s != nullptr && "Profiler object provided is null.");
     }
   }
 
@@ -141,4 +141,4 @@ ParallelCoreRunner()->ParallelCoreRunner<NullProfiler>;
 } // namespace core
 } // namespace baltazar
 
-#endif // CORE_PARALLEL_HPP
+#endif // BALTAZAR_CORE_PARALLEL_HPP

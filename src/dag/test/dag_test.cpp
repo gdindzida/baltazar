@@ -164,13 +164,13 @@ TEST(DagTest, ConnectFewNodesAndRunThemNonConvertibleTypes) {
   }
 
   auto retValue = *static_cast<std::array<int, 2> *>(nodeD.getOutputPtr());
-  auto retValueRef = nodeD.getOutputRef();
+  auto *retPtr = static_cast<std::array<int, 2> *>(nodeD.getOutputPtr());
 
   // Assert
   EXPECT_EQ(retValue[0], 2);
   EXPECT_EQ(retValue[1], 3);
-  EXPECT_EQ(retValue[0], retValueRef[0]);
-  EXPECT_EQ(retValue[1], retValueRef[1]);
+  EXPECT_EQ(retValue[0], (*retPtr)[0]);
+  EXPECT_EQ(retValue[1], (*retPtr)[1]);
 }
 
 TEST(DagTest, CreateGraphAndGetSortedTasks) {

@@ -1,5 +1,5 @@
-#ifndef MINIMAL_OPTIONAL_HPP
-#define MINIMAL_OPTIONAL_HPP
+#ifndef BALTAZAR_MINIMAL_OPTIONAL_HPP
+#define BALTAZAR_MINIMAL_OPTIONAL_HPP
 
 #include <new>
 #include <utility>
@@ -70,4 +70,4 @@ private:
 } // namespace utils
 } // namespace baltazar
 
-#endif // MINIMAL_OPTIONAL_HPP
+#endif // BALTAZAR_MINIMAL_OPTIONAL_HPP
