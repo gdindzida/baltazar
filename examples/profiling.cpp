@@ -47,7 +47,7 @@ public:
 };
 
 // Identifier definition
-enum class TaskIdentifers : size_t { SumId = 0, AddId = 1, PrintId = 4 };
+enum class TaskIdentifers : size_t { SumId = 0, AddId = 1, PrintId = 2 };
 
 // Application
 int main() {

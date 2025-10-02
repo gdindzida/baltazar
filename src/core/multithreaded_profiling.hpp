@@ -63,6 +63,8 @@ public:
     logWaveFunction(m_out, waveNumber, waveTime);
   }
 
+  void logRun(microsecs runTime) override { logRunFunction(m_out, runTime); }
+
   void logCustomDiff(microsecs totalTime, size_t customIdentifier) override {
     std::lock_guard lg{m_mtx};
     logCustomDurationFunction(m_out, customIdentifier, totalTime);

@@ -30,6 +30,10 @@ inline void logWaveFunction(std::ofstream &ofs, size_t waveNumber,
   ofs << "W, " << waveNumber << ", " << duration.count() << "\n";
 }
 
+inline void logRunFunction(std::ofstream &ofs, microsecs duration) {
+  ofs << "R, " << duration.count() << "\n";
+}
+
 inline void logCustomDurationFunction(std::ofstream &ofs, size_t identifer,
                                       microsecs duration) {
   ofs << "C, " << identifer << ", " << duration.count() << "\n";
@@ -41,6 +45,7 @@ public:
 
   virtual void logJob(threadPool::ThreadJob &job) = 0;
   virtual void logWave(microsecs waveTime, size_t waveNumber) = 0;
+  virtual void logRun(microsecs runTime) = 0;
   virtual void logCustomDiff(microsecs totalTime, size_t customIdentifier) = 0;
   virtual void turnOn() = 0;
   virtual void turnOff() = 0;
@@ -75,6 +80,8 @@ public:
     logWaveFunction(m_out, waveNumber, waveTime);
   }
 
+  void logRun(microsecs runTime) override { logRunFunction(m_out, runTime); }
+
   void logCustomDiff(microsecs totalTime, size_t customIdentifier) override {
     logCustomDurationFunction(m_out, customIdentifier, totalTime);
   }
@@ -100,6 +107,8 @@ public:
   void logJob(threadPool::ThreadJob &job) override {}
 
   void logWave(microsecs waveTime, size_t waveNumber) override {}
+
+  void logRun(microsecs runTime) override {}
 
   void logCustomDiff(microsecs totalTime, size_t customIdentifier) override {}
 

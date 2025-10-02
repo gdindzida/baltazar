@@ -59,6 +59,9 @@ public:
   template <size_t NUM_OF_NODES>
   void runNodeListSerialNTimes(dag::NodeList<NUM_OF_NODES> &nodes,
                                std::atomic<bool> &stopFlag, size_t n) {
+#ifdef PROFILELOG
+    auto startRunTimePoint = std::chrono::steady_clock::now();
+#endif
     for (int iter = 0; iter < n; iter++) {
 #ifdef PROFILELOG
       auto startTimePoint = std::chrono::steady_clock::now();
@@ -78,11 +81,19 @@ public:
         break;
       }
     }
+#ifdef PROFILELOG
+    auto endRunTimePoint = std::chrono::steady_clock::now();
+    m_profiler.logRun(std::chrono::duration_cast<microsecs>(endRunTimePoint -
+                                                            startRunTimePoint));
+#endif
   }
 
   template <size_t NUM_OF_NODES>
   void runNodeListSerialLoop(dag::NodeList<NUM_OF_NODES> &nodes,
                              std::atomic<bool> &stopFlag) {
+#ifdef PROFILELOG
+    auto startRunTimePoint = std::chrono::steady_clock::now();
+#endif
     while (!stopFlag) {
 #ifdef PROFILELOG
       auto startTimePoint = std::chrono::steady_clock::now();
@@ -98,6 +109,11 @@ public:
           m_waveNumber);
 #endif
     }
+#ifdef PROFILELOG
+    auto endRunTimePoint = std::chrono::steady_clock::now();
+    m_profiler.logRun(std::chrono::duration_cast<microsecs>(endRunTimePoint -
+                                                            startRunTimePoint));
+#endif
   }
 
 private:

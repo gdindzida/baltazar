@@ -1,3 +1,5 @@
+#define PROFILELOG
+
 #include "../core_parallel.hpp"
 #include "../core_serial.hpp"
 #include "multithreaded_profiling.hpp"

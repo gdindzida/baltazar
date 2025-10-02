@@ -84,6 +84,9 @@ public:
       threadPool::ThreadPool<NUMBER_OF_THREADS, TASK_BUFFER_SIZE> &tPool,
       std::atomic<bool> &stopFlag, size_t n,
       ICoreProfiler *profiler = nullptr) {
+#ifdef PROFILELOG
+    auto startRunTimePoint = std::chrono::steady_clock::now();
+#endif
     for (int iter = 0; iter < n; iter++) {
 #ifdef PROFILELOG
       auto startTimePoint = std::chrono::steady_clock::now();
@@ -103,13 +106,22 @@ public:
         break;
       }
     }
+#ifdef PROFILELOG
+    auto endRunTimePoint = std::chrono::steady_clock::now();
+    m_profiler.logRun(std::chrono::duration_cast<microsecs>(endRunTimePoint -
+                                                            startRunTimePoint));
+#endif
   }
+
   template <size_t NUM_OF_NODES, size_t NUMBER_OF_THREADS,
             size_t TASK_BUFFER_SIZE>
   void runNodeListParallelLoop(
       dag::NodeList<NUM_OF_NODES> &nodes,
       threadPool::ThreadPool<NUMBER_OF_THREADS, TASK_BUFFER_SIZE> &tPool,
       std::atomic<bool> &stopFlag, ICoreProfiler *profiler = nullptr) {
+#ifdef PROFILELOG
+    auto startRunTimePoint = std::chrono::steady_clock::now();
+#endif
     while (!stopFlag) {
 #ifdef PROFILELOG
       auto startTimePoint = std::chrono::steady_clock::now();
@@ -129,6 +141,11 @@ public:
         break;
       }
     }
+#ifdef PROFILELOG
+    auto endRunTimePoint = std::chrono::steady_clock::now();
+    m_profiler.logRun(std::chrono::duration_cast<microsecs>(endRunTimePoint -
+                                                            startRunTimePoint));
+#endif
   }
 
 private:
