@@ -29,10 +29,14 @@ class ThreadStatsColumns(IntEnum):
     RUN_DURATION = 0
 
 
-def compute_job_stats(arr: NDArray[np.float64]) -> tuple[Dict[str, Any], Dict[int, NDArray[np.uint64]], Dict[int, NDArray[np.uint64]]]:
+def compute_job_stats(arr: NDArray[np.float64], r_arr: NDArray[np.float64]) -> tuple[Dict[str, Any], Dict[int, NDArray[np.uint64]], Dict[int, NDArray[np.uint64]]]:
     """Compute basic statistics for a jobs array."""
     if arr.size == 0:
         return {}, {}, {}
+
+    total_time = 0
+    for row in r_arr:
+        total_time += row[0]
 
     task_counts : Dict[int, int]= {}
     thread_counts : Dict[int, int] = {}
@@ -56,6 +60,7 @@ def compute_job_stats(arr: NDArray[np.float64]) -> tuple[Dict[str, Any], Dict[in
 
     task_sizes = {}
     thread_sizes = {}
+    total_run_time = 0
 
     for row in arr:
         task_id = row[JobColumns.TASK_ID]
@@ -66,6 +71,7 @@ def compute_job_stats(arr: NDArray[np.float64]) -> tuple[Dict[str, Any], Dict[in
             task_stats[task_id][task_sizes[task_id]][TaskStatsColumns.RUN_DURATION] = row[JobColumns.RUN_DURATION] 
             task_stats[task_id][task_sizes[task_id]][TaskStatsColumns.WAIT_DURATION] = row[JobColumns.WAIT_DURATION] 
             task_sizes[task_id] += 1
+            total_run_time += row[JobColumns.RUN_DURATION]
         else:
             task_stats[task_id] = np.zeros((task_counts[task_id], 3), dtype=np.uint64)
             task_stats[task_id][0][TaskStatsColumns.SCHED_DURATION] = row[JobColumns.SCHED_DURATION]
@@ -102,6 +108,8 @@ def compute_job_stats(arr: NDArray[np.float64]) -> tuple[Dict[str, Any], Dict[in
         task_entry["sched_time_max"] = int(np.max(task_stats[task_id][:, TaskStatsColumns.SCHED_DURATION]))
         task_entry["run_time_max"] = int(np.max(task_stats[task_id][:, TaskStatsColumns.RUN_DURATION]))
         task_entry["wait_time_max"] = int(np.max(task_stats[task_id][:, TaskStatsColumns.WAIT_DURATION]))
+        task_entry["count"] = task_sizes[task_id]
+        task_entry["thread_usage"] = float(np.sum(task_stats[task_id][:, TaskStatsColumns.RUN_DURATION]) / total_time)
         per_task_stats[int(task_id)] = task_entry
 
     stats["task_stats"] = per_task_stats
@@ -114,6 +122,8 @@ def compute_job_stats(arr: NDArray[np.float64]) -> tuple[Dict[str, Any], Dict[in
         thread_entry["run_time_std"] = float(np.std(thread_stats[thread_id][:, ThreadStatsColumns.RUN_DURATION]))
         thread_entry["run_time_min"] = int(np.min(thread_stats[thread_id][:, ThreadStatsColumns.RUN_DURATION]))
         thread_entry["run_time_max"] = int(np.max(thread_stats[thread_id][:, ThreadStatsColumns.RUN_DURATION]))
+        thread_entry["count"] = thread_sizes[thread_id]
+        thread_entry["usage"] = float(np.sum(thread_stats[thread_id][:, ThreadStatsColumns.RUN_DURATION]) / total_time)
         per_thread_stats[int(thread_id)] = thread_entry
 
     stats["thread_stats"] = per_thread_stats
@@ -145,6 +155,8 @@ def compute_job_stats(arr: NDArray[np.float64]) -> tuple[Dict[str, Any], Dict[in
 
     stats["wait_stats"] = wait_stats
 
+    stats["total_usage"] = float(total_run_time / (len(thread_stats) * total_time))
+
     return stats, task_stats, thread_stats
 
 def compute_wave_stats(arr: NDArray[np.float64]) -> Dict[str, float | int]:
@@ -162,10 +174,11 @@ def compute_wave_stats(arr: NDArray[np.float64]) -> Dict[str, float | int]:
     return wave_stats
 
 
-def parse_file(filename: str) -> Tuple[NDArray[np.float64], NDArray[np.float64]]:
+def parse_file(filename: str) -> Tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
     """Read and parse the input file into W (wave) and J (job) arrays."""
     w_data: list[list[float]] = []
     j_data: list[list[float]] = []
+    r_data: list[list[float]] = []
 
     with open(filename, "r") as f:
         for line in f:
@@ -179,10 +192,14 @@ def parse_file(filename: str) -> Tuple[NDArray[np.float64], NDArray[np.float64]]
             elif parts[0] == "J":
                 values = [float(x) for x in parts[1:] if x.strip() != ""]
                 j_data.append(values)
+            elif parts[0] == "R":
+                values = [float(x) for x in parts[1:] if x.strip() != ""]
+                r_data.append(values)
 
     w_array: NDArray[np.float64] = np.array(w_data) if w_data else np.empty((0,))
     j_array: NDArray[np.float64] = np.array(j_data) if j_data else np.empty((0,))
-    return w_array, j_array
+    r_array: NDArray[np.float64] = np.array(r_data) if r_data else np.empty((0,))
+    return w_array, j_array, r_array 
 
 
 def save_stats_to_yaml(stats: Dict[str, Any], filename: str) -> None:
@@ -240,9 +257,9 @@ def main() -> None:
     graphs_dir = Path("temp/graphs")
     graphs_dir.mkdir(parents=True, exist_ok=True)
 
-    w_array, j_array = parse_file(input_file)
+    w_array, j_array, r_array = parse_file(input_file)
  
-    stats, task_stats, thread_stats = compute_job_stats(j_array)
+    stats, task_stats, thread_stats = compute_job_stats(j_array, r_array)
     print("Job statitics calculated")
 
     w_stats = compute_wave_stats(w_array)
@@ -264,7 +281,7 @@ def main() -> None:
 
 
     save_stats_to_yaml(stats, output_path+"stats.yaml")
-    print("Statistics written to j_stats.yaml")
+    print("Statistics written to stats.yaml")
 
     for task_id in task_stats:
         create_histograms(task_stats[task_id], output_path+"graphs/task_"+str(int(task_id)))
@@ -276,8 +293,9 @@ def main() -> None:
     create_histograms(j_array[:, [JobColumns.RUN_DURATION]], output_path+"graphs/run")
     create_histograms(j_array[:, [JobColumns.WAIT_DURATION]], output_path+"graphs/wait")
 
-    create_histograms(w_array[:, [WaveColumns.DURATION]], output_path+"graphs/wave")
-    create_plot(w_array[:, WaveColumns.WAVE_NUM], w_array[:, WaveColumns.DURATION], output_path+"graphs/wave_plot")
+    if (w_array.ndim == 2):
+        create_histograms(w_array[:, [WaveColumns.DURATION]], output_path+"graphs/wave")
+        create_plot(w_array[:, WaveColumns.WAVE_NUM], w_array[:, WaveColumns.DURATION], output_path+"graphs/wave_plot")
     print("Histograms created at temp/graphs/ folder")
 
 
