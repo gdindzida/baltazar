@@ -1,0 +1,35 @@
+---
+Checks: >
+  clang-analyzer-*,
+  modernize-*,
+  performance-*,
+  readability-*,
+  bugprone-*,
+  cppcoreguidelines-*
+
+# Disable the "use trailing return type" rule (stylistic, not functional)
+CheckOptions:
+  - key: modernize-use-trailing-return-type.IgnoreMacros
+    value: '1'
+  - key: modernize-use-trailing-return-type.IgnoreTemplateFunctions
+    value: '1'
+
+# Explicitly turn this check off
+WarningsAsErrors: ''
+FormatStyle: none
+
+# Only include warnings from your project's source and include dirs
+HeaderFilterRegex: '^/home/martindzida/workspace/projects/baltazar/(src|include)/'
+
+# Exclude this check entirely
+# You can subtract checks from patterns by prefixing with '-'
+Checks: >
+  clang-analyzer-*,
+  modernize-*,
+  -modernize-use-trailing-return-type,
+  performance-*,
+  readability-*,
+  bugprone-*,
+  cppcoreguidelines-*
+...
+
