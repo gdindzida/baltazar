@@ -6,19 +6,74 @@ Baltazar is lightweight data processing pipeline. Each task is represented as no
 can be executed in parallel by the thread pool or in sequence. Sequence of execution/scheduling is determined by
 topological sort of DAG.
 
-## Roadmap
+## How to use library
+TODO
+
+## How to profile
+TODO
+
+## Contributing
 
 ### How to build, run & debug
 
--- TODO
+#### Setup
+
+- Install:
+    - cmake
+    - clang, clang-tidy, clang-format
+    - python3
+- Setup baltazar controller alias (not mandatory but then full path is needed)
+    - ```
+      echo "alias baltazar='python scripts/baltazar_controller.py'" | tee -a ~/.bashrc
+      source ~/.bashrc
+      ```
 
 
-### Releases
+#### How to use baltazar controller
+
+##### List targets
+Listing all available targets:
+```
+baltazar list
+```
+
+##### Building targets
+Call baltazar controller with following args to build all configs (debug & release):
+```
+baltazar build --config=all
+```
+
+"build" command by default only builds debug config.
+Add "--target" config if you want to build specific target from listed ones.
+```
+baltazar build --config=all --target=<some target>
+```
+
+##### Running targets
+Call baltazar controller with following args to run a target:
+```
+baltazar run --config=<some config> --target<some target>
+```
+Run command can only be used with specific target and cannot run all targets.
+To build and run replace "run" with "build_and_run".
+
+
+##### Running tests
+Call baltazar controller with following args to run all tests:
+```
+baltazar test
+```
+To test specific test add "--target=\<some target ending with _test\>".
+To build and test replace "test" with "build_and_test".
+
+### Roadmap
+
+#### Releases
 
 - MVP ~ oct - dec???
 - 1.0 - ???
 
-### Work packages
+#### Work packages
 
 - MVP
     - CI/CD
@@ -81,7 +136,6 @@ topological sort of DAG.
         - test benchmarks
     - Docs
         - doxygen comments for the api
-        - build docs
         - profiling docs
         - github readme
     - Test
