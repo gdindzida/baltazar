@@ -9,6 +9,9 @@
 #include <iostream>
 #include <ostream>
 #include <random>
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 // Task definition
 class SumNValues {
@@ -107,7 +110,20 @@ int main() {
   // Define profiler
   // Note:
   // Important to define PROFILELOG macro as is in the first line of this file!
-  std::ofstream outfile("output_log.txt");
+  std::string file_path = "temp/output_log.txt";
+  fs::path dir_path = fs::path(file_path).parent_path();
+
+  if (!fs::exists(dir_path)) {
+      // Create the directory if it does not exist
+      if (fs::create_directory(dir_path)) {
+          std::cout << "Directory created successfully." << std::endl;
+      } else {
+          std::cerr << "Failed to create directory." << std::endl;
+          return 1; // Exit with an error code
+      }
+  }
+
+  std::ofstream outfile(file_path);
   if (!outfile) {
     std::cerr << "Error: could not create file\n";
     return 1;
