@@ -9,7 +9,14 @@ topological sort of DAG.
 ## How to use library
 TODO
 
-## How to profile
+### Examples
+Refer to examples/simple.cpp and examples/parallel.cpp
+
+TODO
+
+### How to profile
+Refer to examples/profiling.cpp.
+
 TODO
 
 ## Contributing
