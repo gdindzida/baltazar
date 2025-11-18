@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 # Add the directory where *this* file actually resides
+import os
 import sys
 from pathlib import Path
 import argparse
 import subprocess
 from typing import List
-from scripts.baltazar_update_targets import collect_targets
+from baltazar_update_targets import collect_targets
 
 BUILD_FOLDERS_MAP = {
         "debug": Path("build-debug") / "bin",
@@ -52,9 +53,125 @@ def list_baltazar_binaries(config: str):
 
     return matched
 
+def configure_builds(args):
+    if args.config == "all":
+
+        cmd = CONFIGURE_COMMANDS_MAP["debug"]
+        if args.print_log:
+            cmd = cmd + ' -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS -DDEBUGLOG=1"'
+        else:
+            cmd = cmd + ' -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS -UDEBUGLOG"'
+        print("running command: "+cmd)
+        subprocess.run(cmd, shell=True)
+
+        cmd = CONFIGURE_COMMANDS_MAP["release"]
+        if args.print_log:
+            cmd = cmd + ' -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS -DDEBUGLOG=1"'
+        else:
+            cmd = cmd + ' -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS -UDEBUGLOG"'
+        print("running command: "+cmd)
+        subprocess.run(cmd, shell=True)
+    else:
+        cmd = CONFIGURE_COMMANDS_MAP[args.config]
+        if args.print_log:
+            cmd = cmd + ' -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS -DDEBUGLOG=1"'
+        else:
+            cmd = cmd + ' -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS -UDEBUGLOG"'
+        print("running command: "+cmd)
+        subprocess.run(cmd, shell=True)
+
+def if_configured(args):
+    print("checking if configured")
+    if args.config == "all":
+        if (not os.path.isdir("build-debug")) or (not os.path.isdir("build-release")):
+            return False
+        else:
+            return True
+    else:
+        if not os.path.isdir("build-"+args.config): 
+            return False
+        else:
+            return True
+
+def build_targets(args):
+    if args.config == "all":
+        if args.target:
+            print("WARNING: using target for config=all is redundant.")
+
+        cmd = BUILD_COMMANDS_MAP["debug"]
+        if (args.verbose):
+            cmd += " --verbose"
+        print("running command: "+cmd)
+        subprocess.run(cmd, shell=True)
+
+        cmd = BUILD_COMMANDS_MAP["release"]
+        if (args.verbose):
+            cmd += " --verbose"
+        print("running command: "+cmd)
+        subprocess.run(cmd, shell=True)
+    else:
+        cmd = BUILD_COMMANDS_MAP[args.config]
+        if (args.verbose):
+            cmd += " --verbose"
+
+        if args.target:
+            cmd = cmd + " --target " + args.target
+
+        print("running command: "+cmd)
+        subprocess.run(cmd, shell=True)
+
+def run_targets(args):
+    if args.config == "all":
+        print("ERROR: It is not allowed to run both configs at the same time!")
+        sys.exit(1)
+    else:
+        binaries = list_baltazar_binaries(args.config)
+    
+        if not args.target:
+            print("ERROR: target not specified!")
+            sys.exit(1)
+    
+        binary_exists = False
+        for bin in binaries:
+            if bin.name == args.target:
+                subprocess.run("./"+str(bin), shell=True)
+                binary_exists = True
+                break
+                    
+        if not binary_exists:
+            print("ERROR: binary doesn't exist!")
+            sys.exit(1)
+
+def test_targets(args):
+    binaries = list_baltazar_binaries("debug") 
+
+    filtered = [s for s in binaries if str(s).endswith("_test")]
+
+    if args.target:
+        binary_exists = False
+        for bin in filtered:
+            if bin.name == args.target:
+                subprocess.run("./"+str(bin), shell=True)
+                binary_exists = True
+                break
+                    
+        if not binary_exists:
+            print("ERROR: binary doesn't exist!")
+            sys.exit(1)
+    else:
+        all_successfull = True 
+        for bin in filtered:
+            result = subprocess.run("./"+str(bin), shell=True)
+            if result.returncode != 0 and all_successfull:
+                all_successfull = False
+
+
+        if not all_successfull:
+            print("ERROR: Some tests failed!")
+
 def main():
     parser = argparse.ArgumentParser(description="List Baltazar binaries for a given config.")
-    parser.add_argument("command", choices=["configure", "build", "run", "list", "test"], help="Select which action to perform.")
+    parser.add_argument("command", choices=["configure", "build", "run", "list", "test", "build_and_run", "build_and_test", "clang_check"], help="Select which action to perform.")
     parser.add_argument("--target", help="Select which specific target to build or run.")
     parser.add_argument(
         "--config",
@@ -65,118 +182,53 @@ def main():
     parser.add_argument("--print-log", action="store_true", help="Turn on log prints in configure step.")
     parser.add_argument("--verbose", action="store_true", help="Turn on verbose output.")
     args = parser.parse_args()
-
+    
     if args.command == "list":
         all_targets = collect_targets(".")
 
-        for target in all_targets:
+        filtered = [s for s in all_targets if not str(s).endswith("_lib")]
+
+        for target in filtered:
             print(target)
 
     if args.command == "configure":
-        if args.config == "all":
-
-            cmd = CONFIGURE_COMMANDS_MAP["debug"]
-            if args.print_log:
-                cmd = cmd + ' -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS -DDEBUGLOG=1"'
-            else:
-                cmd = cmd + ' -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS -UDEBUGLOG"'
-            print("running command: "+cmd)
-            subprocess.run(cmd, shell=True)
-
-            cmd = CONFIGURE_COMMANDS_MAP["release"]
-            if args.print_log:
-                cmd = cmd + ' -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS -DDEBUGLOG=1"'
-            else:
-                cmd = cmd + ' -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS -UDEBUGLOG"'
-            print("running command: "+cmd)
-            subprocess.run(cmd, shell=True)
-        else:
-            cmd = CONFIGURE_COMMANDS_MAP[args.config]
-            if args.print_log:
-                cmd = cmd + ' -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS -DDEBUGLOG=1"'
-            else:
-                cmd = cmd + ' -DCMAKE_CXX_FLAGS="$CMAKE_CXX_FLAGS -UDEBUGLOG"'
-            print("running command: "+cmd)
-            subprocess.run(cmd, shell=True)
+        configure_builds(args)
 
     if args.command == "build":
-        if args.config == "all":
-            if args.target:
-                print("WARNING: using taget for config=all is redundant.")
+        # if not if_configured(args):
+        print("configuring...")
+        configure_builds(args)
 
-            cmd = BUILD_COMMANDS_MAP["debug"]
-            if (args.verbose):
-                cmd += " --verbose"
-            print("running command: "+cmd)
-            subprocess.run(cmd, shell=True)
-
-            cmd = BUILD_COMMANDS_MAP["release"]
-            if (args.verbose):
-                cmd += " --verbose"
-            print("running command: "+cmd)
-            subprocess.run(cmd, shell=True)
-        else:
-            cmd = BUILD_COMMANDS_MAP[args.config]
-            if (args.verbose):
-                cmd += " --verbose"
-
-            if args.target:
-                cmd = cmd + " --target " + args.target
-
-            print("running command: "+cmd)
-            subprocess.run(cmd, shell=True)
-            
+        build_targets(args) 
 
     if args.command == "run":
-        if args.config == "all":
-            print("ERROR: It is not allowed to run both configs at the same time!")
-            sys.exit(1)
-        else:
-            binaries = list_baltazar_binaries(args.config)
-
-            if not args.target:
-                print("ERROR: target not specified!")
-                sys.exit(1)
-
-            binary_exists = False
-            for bin in binaries:
-                if bin.name == args.target:
-                    subprocess.run("./"+str(bin), shell=True)
-                    binary_exists = True
-                    break
-            
-            if not binary_exists:
-                print("ERROR: binary doesn't exist!")
-                sys.exit(1)
-
+        run_targets(args)
 
     if args.command == "test":
-        binaries = list_baltazar_binaries("debug") 
+        test_targets(args)
 
-        filtered = [s for s in binaries if str(s).endswith("_test")]
+    if args.command == "build_and_run":
+        # if not if_configured(args):
+        print("configuring...")
+        configure_builds(args)
 
-        if args.target:
-            binary_exists = False
-            for bin in filtered:
-                if bin.name == args.target:
-                    subprocess.run("./"+str(bin), shell=True)
-                    binary_exists = True
-                    break
-            
-            if not binary_exists:
-                print("ERROR: binary doesn't exist!")
-                sys.exit(1)
-        else:
-            all_successfull = True 
-            for bin in filtered:
-                result = subprocess.run("./"+str(bin), shell=True)
-                if result.returncode != 0 and all_successfull:
-                    all_successfull = False
+        build_targets(args) 
+        run_targets(args)
 
+    if args.command == "build_and_test":
+        # if not if_configured(args):
+        print("configuring...")
+        configure_builds(args)
 
-            if not all_successfull:
-                print("ERROR: Some tests failed!")
-
+        build_targets(args) 
+        test_targets(args)
+    
+    if args.command == "clang_check":
+        print("Running clang-check")
+        subprocess.run(["mkdir", "-p", "temp"], text=True)
+        subprocess.run(["touch", "temp/tidy.log"], text=True)
+        subprocess.run(["./scripts/run_clang_tidy.sh"], text=True)
+        subprocess.run(["/usr/bin/python3", "scripts/analyze_clang_tidy_log.py", "temp/tidy.log"], text=True)
                 
 
 
